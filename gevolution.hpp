@@ -983,6 +983,7 @@ void projection_T00_project(Particles<part, part_info, part_dataType> * pcls, Fi
 			(*T00)(xField+0+2)   += localCube[5] * mass;
 			(*T00)(xField+0+1)   += localCube[6] * mass;
 			(*T00)(xField+0+1+2) += localCube[7] * mass;
+
 		}
 	}  
 }
@@ -1029,7 +1030,7 @@ void projection_T0i_project(Particles<part,part_info,part_dataType> * pcls, Fiel
 	
 	double mass = coeff / (dx*dx*dx);
 	mass *= *(double*)((char*)pcls->parts_info() + pcls->mass_offset());
-    
+
     Real w;
 	Real * q;
 	size_t offset_q = offsetof(part,vel);
@@ -1041,6 +1042,7 @@ void projection_T0i_project(Particles<part,part_info,part_dataType> * pcls, Fiel
     
 	for(xPart.first(), xT0i.first(); xPart.test(); xPart.next(), xT0i.next())
 	{
+          
 		if(pcls->field()(xPart).size!=0)
         {
         	for(int i=0; i<3; i++)
@@ -1058,6 +1060,8 @@ void projection_T0i_project(Particles<part,part_info,part_dataType> * pcls, Fiel
 				localCubePhi[5] = (*phi)(xT0i+0+2);
 				localCubePhi[6] = (*phi)(xT0i+0+1);
 				localCubePhi[7] = (*phi)(xT0i+0+1+2);
+                                
+//cout << "test Phi " << xT0i << " " << xT0i+2 << " " << xT0i+1 << " " << xT0i +1+2 << "\n";
 			}
 
 			for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
@@ -1267,4 +1271,114 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 #endif
+
+
+void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL)
+{
+
+  Real  localCubePhi[8];
+  Real  localCubeT00[8];
+  Real  localEdgeTi0[12];  
+
+  Site xvi(vi->lattice());
+  Site xsmooth(vi->lattice());
+  /*
+  for(xvi.first(); xvi.test(); xvi.next())
+    { 
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
+      if (source != NULL)
+        {
+          localCubeT00[0] = (*source)(xvi);
+          localCubeT00[1] = (*source)(xvi+2);
+          localCubeT00[2] = (*source)(xvi+1);
+          localCubeT00[3] = (*source)(xvi+1+2);
+          localCubeT00[4] = (*source)(xvi+0);
+          localCubeT00[5] = (*source)(xvi+0+2);
+          localCubeT00[6] = (*source)(xvi+0+1);
+          localCubeT00[7] = (*source)(xvi+0+1+2);
+        }
+
+        }
+  */  
+  for(xvi.first(); xvi.test(); xvi.next())
+    {  
+
+      for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
+      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
+
+
+      if (phi != NULL)
+	{
+	  localCubePhi[0] = (*phi)(xvi);
+	  localCubePhi[1] = (*phi)(xvi+2);
+	  localCubePhi[2] = (*phi)(xvi+1);
+	  localCubePhi[3] = (*phi)(xvi+1+2);
+	  localCubePhi[4] = (*phi)(xvi+0);
+	  localCubePhi[5] = (*phi)(xvi+0+2);
+	  localCubePhi[6] = (*phi)(xvi+0+1);
+	  localCubePhi[7] = (*phi)(xvi+0+1+2);
+	}
+
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                                  
+      if (source != NULL)                                                                                                                
+        {                                                                                                                                
+          localCubeT00[0] = (*source)(xvi);                                                                                                       localCubeT00[1] = (*source)(xvi+2);                                                                                                     localCubeT00[2] = (*source)(xvi+1);                                                                                                     localCubeT00[3] = (*source)(xvi+1+2);
+          localCubeT00[4] = (*source)(xvi+0);                                                                                                     localCubeT00[5] = (*source)(xvi+0+2);                                                                                                   localCubeT00[6] = (*source)(xvi+0+1);                                                                                                   localCubeT00[7] = (*source)(xvi+0+1+2);                                                                                               }
+  
+      for(xsmooth.first(); xvi.test(); xvi.next())
+	{ localCubeT00[0]+= 
+	}
+      
+
+      if (Bi != NULL)
+        {
+      
+	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]));
+	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]));
+	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]));
+
+	    localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]));
+	    localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]));
+
+	    localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]));
+	    localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]));
+
+	    localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5]));
+	    localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3]));
+
+	    localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]));
+	    localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]));
+	    localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]));
+	    
+        }
+
+      if ( (localCubeT00[0] + localCubeT00[4]) < 1.E-20)
+	{
+	  cout << "T00 is 0 \n";
+	}
+      //cout << "T00 test: " << (localCubeT00[0] + localCubeT00[4]) << " " << a << " " << localEdgeTi0[0] << "\n"; 
+      
+      (*vi)(xvi,0) += 2./a*localEdgeTi0[0];///(localCubeT00[0] + localCubeT00[4]);
+      (*vi)(xvi,1) += 2./a*localEdgeTi0[4];///(localCubeT00[0] + localCubeT00[2]);
+      (*vi)(xvi,2) += 2./a*localEdgeTi0[8];///(localCubeT00[0] + localCubeT00[1]);
+
+      (*vi)(xvi+0,1) += 2./a*localEdgeTi0[5];///(localCubeT00[4] + localCubeT00[6]);
+      (*vi)(xvi+0,2) += 2./a*localEdgeTi0[9];///(localCubeT00[4] + localCubeT00[5]);
+
+      (*vi)(xvi+1,0) += 2./a*localEdgeTi0[1];///(localCubeT00[2] + localCubeT00[6]);
+      (*vi)(xvi+1,2) += 2./a*localEdgeTi0[10];///(localCubeT00[0] + localCubeT00[3]);
+
+      (*vi)(xvi+2,0) += 2./a*localEdgeTi0[2];///(localCubeT00[1] + localCubeT00[5]);
+      (*vi)(xvi+2,1) += 2./a*localEdgeTi0[6];///(localCubeT00[1] + localCubeT00[3]);
+
+      (*vi)(xvi+1+2,0) += 2./a*localEdgeTi0[3];///(localCubeT00[3] + localCubeT00[7]);
+      (*vi)(xvi+0+2,1) += 2./a*localEdgeTi0[7];///(localCubeT00[5] + localCubeT00[7]);
+      (*vi)(xvi+0+1,2) += 2./a*localEdgeTi0[11];///(localCubeT00[6] + localCubeT00[7]);
+      
+      //      cout << "vi test " << (*vi)(xvi, 0)<< "\n";
+      
+      
+    }
+}
+
 

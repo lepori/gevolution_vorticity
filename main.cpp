@@ -206,9 +206,13 @@ int main(int argc, char **argv)
 	Field<Real> chi;
 	Field<Real> Sij;
 	Field<Real> Bi;
+        Field<Real> vi;
 	Field<Cplx> scalarFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
+        Field<Cplx> viFT;
+        
+	
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
@@ -219,29 +223,39 @@ int main(int argc, char **argv)
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
 	PlanFFT<Cplx> plan_Sij(&Sij, &SijFT);
+        vi.initialize(lat,3);
 	Bi.initialize(lat,3);
+        viFT.initialize(latFT,3);
 	BiFT.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi(&Bi, &BiFT);
+        PlanFFT<Cplx> plan_vi(&vi, &viFT);
+        //PlanFFT<Cplx> plan_wi(&wiFT);
+
 #ifdef CHECK_B
 	Field<Real> Bi_check;
+        Field<Real> vi_check;
 	Field<Cplx> BiFT_check;
+        Field<Cplx> viFT_check;
 	Bi_check.initialize(lat,3);
+        vi_check.initialize(lat,3);
 	BiFT_check.initialize(latFT,3);
+        viFT_check.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi_check(&Bi_check, &BiFT_check);
+        PlanFFT<Cplx> plan_vi_check(&vi_check, &viFT_check);
 #endif
 
 	update_cdm_fields[0] = &phi;
 	update_cdm_fields[1] = &chi;
 	update_cdm_fields[2] = &Bi;
-	
+        
 	update_b_fields[0] = &phi;
 	update_b_fields[1] = &chi;
 	update_b_fields[2] = &Bi;
-	
+        	
 	update_ncdm_fields[0] = &phi;
 	update_ncdm_fields[1] = &chi;
 	update_ncdm_fields[2] = &Bi;
-	
+        
 	Site x(lat);
 	rKSite kFT(latFT);
 	
@@ -268,7 +282,7 @@ int main(int argc, char **argv)
 	dtau_old = 0.;
 	
 	if (ic.generator == ICGEN_BASIC)
-		generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij); // generates ICs on the fly
+	  generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi,&vi, &source, &Sij, &scalarFT, &BiFT, &viFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi,&plan_vi, &plan_source, &plan_Sij); // generates ICs on the fly
 	else if (ic.generator == ICGEN_READ_FROM_DISK)
 		readIC(sim, ic, cosmo, fourpiG, a, tau, dtau, dtau_old, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, cycle, snapcount, pkcount, restartcount);
 #ifdef ICGEN_PREVOLUTION
@@ -310,6 +324,18 @@ int main(int argc, char **argv)
 			BiFT_check(kFT, 2) = BiFT(kFT, 2);
 		}
 	}
+#endif
+
+#ifdef CHECK_v
+        if (sim.vector_flag == VECTOR_ELLIPTIC)
+	  {
+	    for (kFT.first(); kFT.test(); kFT.next())
+	      {
+		viFT_check(kFT, 0) = viFT(kFT, 0);
+		viFT_check(kFT, 1) = viFT(kFT, 1);
+		viFT_check(kFT, 2) = viFT(kFT, 2);
+	      }
+	  }
 #endif
 	
 	for (i = 0; i < 6; i++)
@@ -394,7 +420,7 @@ int main(int argc, char **argv)
 		projection_T00_comm(&source);
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC)
-		{
+		  {     
 			projection_init(&Bi);
 			projection_T0i_project(&pcls_cdm, &Bi, &phi);
 			if (sim.baryon_flag)
@@ -406,6 +432,13 @@ int main(int argc, char **argv)
 			}
 			projection_T0i_comm(&Bi);
 		}
+
+                if (sim.vector_flag == VECTOR_ELLIPTIC)
+ 
+		  {                     
+                    compute_vi_project(&vi, &source, a, &Bi,  &phi);
+                  }  
+
 		
 		projection_init(&Sij);
 		projection_Tij_project(&pcls_cdm, &Sij, a, &phi);
@@ -417,6 +450,9 @@ int main(int argc, char **argv)
 				projection_Tij_project(pcls_ncdm+i, &Sij, a, &phi);
 		}
 		projection_Tij_comm(&Sij);
+		//Here we add something to compute the velocity field
+		//compute_vi_project
+
 		
 #ifdef BENCHMARK 
 		projection_time += MPI_Wtime() - cycle_start_time;

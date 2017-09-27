@@ -1633,7 +1633,7 @@ double applyMomentumDistribution(Particles<part_simple,part_simple_info,part_sim
 // 
 //////////////////////////
 
-void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const double fourpiG, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, double * maxvel, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij)
+void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const double fourpiG, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, double * maxvel, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * vi, Field<Real> * source, Field<Real> * Sij, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * viFT, Field<Cplx> * SijFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_vi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij)
 {
 	int i, j, p;
 	double a = 1. / (1. + sim.z_in);
@@ -2229,15 +2229,22 @@ void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const 
 	}
 	
 	projection_init(Bi);
-	projection_T0i_project(pcls_cdm, Bi, phi);
+ 	projection_T0i_project(pcls_cdm, Bi, phi);
 	if (sim.baryon_flag)
 		projection_T0i_project(pcls_b, Bi, phi);
 	projection_T0i_comm(Bi);
 	plan_Bi->execute(FFT_FORWARD);
-	projectFTvector(*BiFT, *BiFT, fourpiG / (double) sim.numpts / (double) sim.numpts);	
+        projectFTvector(*BiFT, *BiFT, fourpiG / (double) sim.numpts / (double) sim.numpts);	
 	plan_Bi->execute(FFT_BACKWARD);	
 	Bi->updateHalo();	// B initialized
 	
+	projection_init(vi);
+        compute_vi_project(vi, source, a, Bi,  phi);
+        plan_vi->execute(FFT_FORWARD);
+        projectFTvector(*viFT, *viFT, fourpiG / (double) sim.numpts / (double) sim.numpts);
+        plan_vi->execute(FFT_BACKWARD);
+        vi->updateHalo();       // v initialized  
+
 	projection_init(Sij);
 	projection_Tij_project(pcls_cdm, Sij, a, phi);
 	if (sim.baryon_flag)
