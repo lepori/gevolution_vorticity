@@ -1281,7 +1281,7 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
   Real  localEdgeTi0[12];  
 
   Site xvi(vi->lattice());
-  Site xsmooth(vi->lattice());
+  //Site xsmooth(vi->lattice());
   /*
   for(xvi.first(); xvi.test(); xvi.next())
     { 
@@ -1322,12 +1322,19 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
       for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                                  
       if (source != NULL)                                                                                                                
         {                                                                                                                                
-          localCubeT00[0] = (*source)(xvi);                                                                                                       localCubeT00[1] = (*source)(xvi+2);                                                                                                     localCubeT00[2] = (*source)(xvi+1);                                                                                                     localCubeT00[3] = (*source)(xvi+1+2);
-          localCubeT00[4] = (*source)(xvi+0);                                                                                                     localCubeT00[5] = (*source)(xvi+0+2);                                                                                                   localCubeT00[6] = (*source)(xvi+0+1);                                                                                                   localCubeT00[7] = (*source)(xvi+0+1+2);                                                                                               }
-  
-      for(xsmooth.first(); xvi.test(); xvi.next())
-	{ localCubeT00[0]+= 
+          localCubeT00[0] = (*source)(xvi);                                                          
+          localCubeT00[1] = (*source)(xvi+2);
+	  localCubeT00[2] = (*source)(xvi+1);
+	  localCubeT00[3] = (*source)(xvi+1+2);
+	  localCubeT00[4] = (*source)(xvi+0);
+	  localCubeT00[5] = (*source)(xvi+0+2);
+	  localCubeT00[6] = (*source)(xvi+0+1);
+	  localCubeT00[7] = (*source)(xvi+0+1+2); 
 	}
+  
+      //for(xsmooth.first(); xsmooth.test(); xsmooth.next())
+      //	{ localCubeT00[0]+= 
+      //}
       
 
       if (Bi != NULL)
@@ -1352,14 +1359,43 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
 	    
         }
 
-      if ( (localCubeT00[0] + localCubeT00[4]) < 1.E-20)
-	{
-	  cout << "T00 is 0 \n";
-	}
-      //cout << "T00 test: " << (localCubeT00[0] + localCubeT00[4]) << " " << a << " " << localEdgeTi0[0] << "\n"; 
+      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)+=0.;
+      else (*vi)(xvi,0) += 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);
+ 
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,0)+= 0.;
+      else (*vi)(xvi,1) += 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);
+
+      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)+=0.;
+      else (*vi)(xvi,2) += 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);
       
-      (*vi)(xvi,0) += 2./a*localEdgeTi0[0];///(localCubeT00[0] + localCubeT00[4]);
-      (*vi)(xvi,1) += 2./a*localEdgeTi0[4];///(localCubeT00[0] + localCubeT00[2]);
+      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)+=0.;
+      else (*vi)(xvi+0,1) += 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);
+
+      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)+=0.;
+      else (*vi)(xvi+0,2) += 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);
+
+      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)+=0.;
+      else (*vi)(xvi+1,0)+= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);
+
+      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)+=0.;
+      else (*vi)(xvi+1,2)+= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);
+
+      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)+=0.;
+      else (*vi)(xvi+2,0)+= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);
+
+      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)+=0.;
+      else (*vi)(xvi+2,1)+= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);
+
+      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)+=0.;
+      else (*vi)(xvi+1+2,0)+= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
+
+      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)+=0.;
+      else (*vi)(xvi+0+2,1)+= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);
+
+      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)+=0.;
+      else (*vi)(xvi+0+1,2)+= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);
+
+      /*      (*vi)(xvi,1) += 2./a*localEdgeTi0[4];///(localCubeT00[0] + localCubeT00[2]);
       (*vi)(xvi,2) += 2./a*localEdgeTi0[8];///(localCubeT00[0] + localCubeT00[1]);
 
       (*vi)(xvi+0,1) += 2./a*localEdgeTi0[5];///(localCubeT00[4] + localCubeT00[6]);
@@ -1374,8 +1410,8 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
       (*vi)(xvi+1+2,0) += 2./a*localEdgeTi0[3];///(localCubeT00[3] + localCubeT00[7]);
       (*vi)(xvi+0+2,1) += 2./a*localEdgeTi0[7];///(localCubeT00[5] + localCubeT00[7]);
       (*vi)(xvi+0+1,2) += 2./a*localEdgeTi0[11];///(localCubeT00[6] + localCubeT00[7]);
-      
-      //      cout << "vi test " << (*vi)(xvi, 0)<< "\n";
+      */
+      cout << "vi test " << (*vi)(xvi, 0)<< "\n";
       
       
     }

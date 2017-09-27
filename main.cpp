@@ -211,8 +211,7 @@ int main(int argc, char **argv)
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
         Field<Cplx> viFT;
-        
-	
+ 	
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
@@ -259,9 +258,28 @@ int main(int argc, char **argv)
 	Site x(lat);
 	rKSite kFT(latFT);
 	
+        //projection_init(&NORM_smooth);
 	dx = 1.0 / (double) sim.numpts;
 	numpts3d = (long) sim.numpts * (long) sim.numpts * (long) sim.numpts;
-	
+
+        //sigma smoothing                                                                                                                 
+	/*
+        Real NORM_smooth[sim.numpts][sim.numpts][sim.numpts]= {0.};
+        Real sigma_smooth = 0.1*dx;
+        Site y(lat);
+        for (x.first(); x.test(); x.next())
+          { //cout << "x0 " << x.coord(0) << "y0 " << x.coord(1) << "z0 " << x.coord(2)<< "\n";                                  
+            for (y.first(); y.test(); y.next()){
+              cout << "Computing some shit \n";
+              NORM_smooth[x.coord(0)][x.coord(1)][x.coord(2)] += exp(-(
+								       pow(x.coord(0)-y.coord(0),2) +
+								       pow(x.coord(1)-y.coord(1),2) +
+								       pow(x.coord(2)-y.coord(2),2)
+								       ) /(2.*pow(sigma_smooth,2))   );
+            }
+          }	
+	 */
+
 	for (i = 0; i < 3; i++) // particles may never move farther than to the adjacent domain
 	{
 		if (lat.sizeLocal(i)-1 < sim.movelimit)
