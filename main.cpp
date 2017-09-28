@@ -596,11 +596,13 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif
 			plan_Bi.execute(FFT_FORWARD);
+                        plan_vi.execute(FFT_FORWARD);
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
+		        projectFTvelocity(viFT, viFT, dx*dx);           // compute the vorticity field 
 #ifdef CHECK_B
 			evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
 #endif
@@ -614,11 +616,13 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif				
 			plan_Bi.execute(FFT_BACKWARD);  // go back to position space
+                        plan_vi.execute(FFT_BACKWARD); 
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count += 3;
 #endif
-			Bi.updateHalo();  // communicate halo values
+ 			Bi.updateHalo();  // communicate halo values
+                        vi.updateHalo(); 
 		}
 
 #ifdef BENCHMARK 
@@ -651,9 +655,9 @@ int main(int argc, char **argv)
 			COUT << COLORTEXT_CYAN << " writing power spectra" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B			
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &Bi_check, &BiFT_check, &plan_Bi_check);
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
 #else
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij);
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi);
 #endif
 
 			pkcount++;
