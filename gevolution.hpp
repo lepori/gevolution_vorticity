@@ -1326,18 +1326,25 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 
 #endif
 
-
-void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL)
+void compute_vi_project(
+    Field<Real> * vi, 
+    Field<Real> * source = NULL, 
+    double a = 1., 
+    Field<Real> * Bi = NULL, 
+    Field<Real> * phi = NULL,
+    Field<Real> * chi = NULL
+)
 {
 
-  Real  localCubePhi[8];
-  Real  localCubeT00[8];
-  Real  localEdgeTi0[12];  
+    Real localCubePhi[8];
+    Real localCubeChi[8];
+    Real localCubeT00[8];
+    Real localEdgeTi0[12];  
 
   Site xvi(vi->lattice());
   //Site xsmooth(vi->lattice());
   
-  for(xvi.first(); xvi.test(); xvi.next())
+/*  for(xvi.first(); xvi.test(); xvi.next())
     { 
       for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
       if (source != NULL)
@@ -1352,17 +1359,18 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
           localCubeT00[7] = (*source)(xvi+0+1+2);
         }
 
-        }
-    
+    }
+*/    
   for(xvi.first(); xvi.test(); xvi.next())
     {  
 
       for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
-      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
+      for (int i = 0; i < 12; i++) localEdgeTi0[i]=0.0;
+      for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
 
 
       if (phi != NULL)
-    {
+        {
       localCubePhi[0] = (*phi)(xvi);
       localCubePhi[1] = (*phi)(xvi+2);
       localCubePhi[2] = (*phi)(xvi+1);
@@ -1371,13 +1379,36 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
       localCubePhi[5] = (*phi)(xvi+0+2);
       localCubePhi[6] = (*phi)(xvi+0+1);
       localCubePhi[7] = (*phi)(xvi+0+1+2);
-    }
+     }
+
+      if (phi != NULL)
+        {
+      localCubePhi[0] = (*phi)(xvi);
+      localCubePhi[1] = (*phi)(xvi+2);
+      localCubePhi[2] = (*phi)(xvi+1);
+      localCubePhi[3] = (*phi)(xvi+1+2);
+      localCubePhi[4] = (*phi)(xvi+0);
+      localCubePhi[5] = (*phi)(xvi+0+2);
+      localCubePhi[6] = (*phi)(xvi+0+1);
+      localCubePhi[7] = (*phi)(xvi+0+1+2);
+     }
+      if (chi != NULL)
+        {
+      localCubeChi[0] = (*chi)(xvi);
+      localCubeChi[1] = (*chi)(xvi+2);
+      localCubeChi[2] = (*chi)(xvi+1);
+      localCubeChi[3] = (*chi)(xvi+1+2);
+      localCubeChi[4] = (*chi)(xvi+0);
+      localCubeChi[5] = (*chi)(xvi+0+2);
+      localCubeChi[6] = (*chi)(xvi+0+1);
+      localCubeChi[7] = (*chi)(xvi+0+1+2);
+     }
 
       for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                                  
       if (source != NULL)                                                                                                                
         {                                                                                                                                
-          localCubeT00[0] = (*source)(xvi);                                                          
-          localCubeT00[1] = (*source)(xvi+2);
+      localCubeT00[0] = (*source)(xvi);                                                          
+      localCubeT00[1] = (*source)(xvi+2);
       localCubeT00[2] = (*source)(xvi+1);
       localCubeT00[3] = (*source)(xvi+1+2);
       localCubeT00[4] = (*source)(xvi+0);
@@ -1386,30 +1417,25 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
       localCubeT00[7] = (*source)(xvi+0+1+2); 
     }
   
-      //for(xsmooth.first(); xsmooth.test(); xsmooth.next())
-      //    { localCubeT00[0]+= 
-      //}
-      
-
       if (Bi != NULL)
         {
       
-        localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]));
-        localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]));
-        localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]));
+        localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + (localCubeChi[0] + localCubeChi[4]));
+        localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + (localCubeChi[0] + localCubeChi[2]));
+        localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + (localCubeChi[0] + localCubeChi[1]));
 
-        localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]));
-        localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]));
+        localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]) + (localCubeChi[4] + localCubeChi[6]));
+        localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]) + (localCubeChi[4] + localCubeChi[5]));
 
-        localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]));
-        localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]));
+        localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]) + (localCubeChi[2] + localCubeChi[6]));
+        localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]) + (localCubeChi[0] + localCubeChi[3]));
 
-        localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5]));
-        localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3]));
+        localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5]) + (localCubeChi[1] + localCubeChi[5]));
+        localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3]) + (localCubeChi[1] + localCubeChi[3]));
 
-        localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]));
-        localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]));
-        localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]));
+        localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]) + (localCubeChi[3] + localCubeChi[7]));
+        localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]) + (localCubeChi[5] + localCubeChi[7]));
+        localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]) + (localCubeChi[6] + localCubeChi[7]));
         
         }
 
@@ -1558,6 +1584,6 @@ void projection_vi_project(Particles<part,part_info,part_dataType> * pcls, Field
     }
     }
 }
-
-#define projection_T0i_comm vectorProjectionCICNGP_comm
 */
+#define projection_T0i_comm vectorProjectionCICNGP_comm
+
