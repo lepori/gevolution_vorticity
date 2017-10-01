@@ -132,97 +132,97 @@
 #define GADGET2_HEADER
 struct gadget2_header
 {
-	uint32_t npart[6];
-	double mass[6];
-	double time;
-	double redshift;
-	int32_t flag_sfr;
-	int32_t flag_feedback;
-	uint32_t npartTotal[6];
-	int32_t flag_cooling;
-	int32_t num_files;
-	double BoxSize;
-	double Omega0;
-	double OmegaLambda;
-	double HubbleParam;
-	char fill[256 - 6 * 4 - 6 * 8 - 2 * 8 - 2 * 4 - 6 * 4 - 2 * 4 - 4 * 8];   /* fills to 256 Bytes */
+    uint32_t npart[6];
+    double mass[6];
+    double time;
+    double redshift;
+    int32_t flag_sfr;
+    int32_t flag_feedback;
+    uint32_t npartTotal[6];
+    int32_t flag_cooling;
+    int32_t num_files;
+    double BoxSize;
+    double Omega0;
+    double OmegaLambda;
+    double HubbleParam;
+    char fill[256 - 6 * 4 - 6 * 8 - 2 * 8 - 2 * 4 - 6 * 4 - 2 * 4 - 4 * 8];   /* fills to 256 Bytes */
 };
 #endif
 
 struct metadata
 {
-	int numpts;
-	int downgrade_factor;
-	long numpcl[MAX_PCL_SPECIES];
-	int tracer_factor[MAX_PCL_SPECIES];
-	int baryon_flag;
-	int gr_flag;
-	int vector_flag;
-	int radiation_flag;
-	int out_pk;
-	int out_snapshot;
-	int num_pk;
-	int numbins;
-	int num_snapshot;
-	int num_restart;
-	double Cf;
-	double movelimit;
-	double steplimit;
-	double boxsize;
-	double wallclocklimit;
-	double z_in;
-	double z_snapshot[MAX_OUTPUTS];
-	double z_pk[MAX_OUTPUTS];
-	double z_restart[MAX_OUTPUTS];
-	double z_switch_deltarad;
-	double z_switch_linearchi;
-	double z_switch_deltancdm[MAX_PCL_SPECIES-2];
-	double z_switch_Bncdm[MAX_PCL_SPECIES-2];
-	char basename_snapshot[PARAM_MAX_LENGTH];
-	char basename_pk[PARAM_MAX_LENGTH];
-	char basename_generic[PARAM_MAX_LENGTH];
-	char output_path[PARAM_MAX_LENGTH];
-	char restart_path[PARAM_MAX_LENGTH];
-	char basename_restart[PARAM_MAX_LENGTH];
+    int numpts;
+    int downgrade_factor;
+    long numpcl[MAX_PCL_SPECIES];
+    int tracer_factor[MAX_PCL_SPECIES];
+    int baryon_flag;
+    int gr_flag;
+    int vector_flag;
+    int radiation_flag;
+    int out_pk;
+    int out_snapshot;
+    int num_pk;
+    int numbins;
+    int num_snapshot;
+    int num_restart;
+    double Cf;
+    double movelimit;
+    double steplimit;
+    double boxsize;
+    double wallclocklimit;
+    double z_in;
+    double z_snapshot[MAX_OUTPUTS];
+    double z_pk[MAX_OUTPUTS];
+    double z_restart[MAX_OUTPUTS];
+    double z_switch_deltarad;
+    double z_switch_linearchi;
+    double z_switch_deltancdm[MAX_PCL_SPECIES-2];
+    double z_switch_Bncdm[MAX_PCL_SPECIES-2];
+    char basename_snapshot[PARAM_MAX_LENGTH];
+    char basename_pk[PARAM_MAX_LENGTH];
+    char basename_generic[PARAM_MAX_LENGTH];
+    char output_path[PARAM_MAX_LENGTH];
+    char restart_path[PARAM_MAX_LENGTH];
+    char basename_restart[PARAM_MAX_LENGTH];
 };
 
 struct icsettings
 {
-	int numtile[MAX_PCL_SPECIES];
-	int seed;
-	int flags;
-	int generator;
-	int restart_cycle;
-	char pclfile[MAX_PCL_SPECIES][PARAM_MAX_LENGTH];
-	char pkfile[PARAM_MAX_LENGTH];
-	char tkfile[PARAM_MAX_LENGTH];
-	char metricfile[3][PARAM_MAX_LENGTH];
-	double restart_tau;
-	double restart_dtau;
-	double restart_version;
-	double z_ic;
-	double z_relax;
-	double Cf;
-	double A_s;
-	double n_s;
-	double k_pivot;
+    int numtile[MAX_PCL_SPECIES];
+    int seed;
+    int flags;
+    int generator;
+    int restart_cycle;
+    char pclfile[MAX_PCL_SPECIES][PARAM_MAX_LENGTH];
+    char pkfile[PARAM_MAX_LENGTH];
+    char tkfile[PARAM_MAX_LENGTH];
+    char metricfile[3][PARAM_MAX_LENGTH];
+    double restart_tau;
+    double restart_dtau;
+    double restart_version;
+    double z_ic;
+    double z_relax;
+    double Cf;
+    double A_s;
+    double n_s;
+    double k_pivot;
 };
 
 struct cosmology
 {
-	double Omega_cdm;
-	double Omega_b;
-	double Omega_m;
-	double Omega_Lambda;
-	double Omega_g;
-	double Omega_ur;
-	double Omega_rad;
-	double Omega_ncdm[MAX_PCL_SPECIES-2];
-	double h;
-	double m_ncdm[MAX_PCL_SPECIES-2];
-	double T_ncdm[MAX_PCL_SPECIES-2];
-	double deg_ncdm[MAX_PCL_SPECIES-2];
-	int num_ncdm;
+    double Omega_cdm;
+    double Omega_b;
+    double Omega_m;
+    double Omega_Lambda;
+    double Omega_g;
+    double Omega_ur;
+    double Omega_rad;
+    double Omega_ncdm[MAX_PCL_SPECIES-2];
+    double h;
+    double m_ncdm[MAX_PCL_SPECIES-2];
+    double T_ncdm[MAX_PCL_SPECIES-2];
+    double deg_ncdm[MAX_PCL_SPECIES-2];
+    int num_ncdm;
 };
 
 #endif
