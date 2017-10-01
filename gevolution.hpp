@@ -1339,7 +1339,8 @@ void compute_vi_project(
     Real localCubePhi[8];
     Real localCubeChi[8];
     Real localCubeT00[8];
-    Real localEdgeTi0[12];  
+    Real localEdgeTi0[12]; 
+    Real error = 1.E-15; 
 
   Site xvi(vi->lattice());
   //Site xsmooth(vi->lattice());
@@ -1439,40 +1440,40 @@ void compute_vi_project(
         
         }
 
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;
+      if ( (localCubeT00[0] + localCubeT00[4]) < error) (*vi)(xvi,0)=0.;
       else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);
  
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,0)= 0.;
+      if ( (localCubeT00[0] + localCubeT00[2]) < error) (*vi)(xvi,0)= 0.;
       else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);
 
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;
+      if ( (localCubeT00[0] + localCubeT00[1]) < error) (*vi)(xvi,2)=0.;
       else (*vi)(xvi,2) = 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);
       
-      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=0.;
+      if ( (localCubeT00[4] + localCubeT00[6]) < error) (*vi)(xvi+0,1)=0.;
       else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);
 
-      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;
+      if ( (localCubeT00[4] + localCubeT00[5]) < error) (*vi)(xvi+0,2)=0.;
       else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);
 
-      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;
+      if ( (localCubeT00[2] + localCubeT00[6]) < error) (*vi)(xvi+1,0)=0.;
       else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);
 
-      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=0.;
+      if ( (localCubeT00[0] + localCubeT00[3]) < error) (*vi)(xvi+1,2)=0.;
       else (*vi)(xvi+1,2)= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);
 
-      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=0.;
+      if ( (localCubeT00[1] + localCubeT00[5]) < error) (*vi)(xvi+2,0)=0.;
       else (*vi)(xvi+2,0)= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);
 
-      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=0.;
+      if ( (localCubeT00[1] + localCubeT00[3]) < error) (*vi)(xvi+2,1)=0.;
       else (*vi)(xvi+2,1)= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);
 
-      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=0.;
+      if ( (localCubeT00[3] + localCubeT00[7]) < error) (*vi)(xvi+1+2,0)=0.;
       else (*vi)(xvi+1+2,0)= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
 
-      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)=0.;
+      if ( (localCubeT00[5] + localCubeT00[7]) < error) (*vi)(xvi+0+2,1)=0.;
       else (*vi)(xvi+0+2,1)= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);
 
-      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=0.;
+      if ( (localCubeT00[6] + localCubeT00[7]) < error) (*vi)(xvi+0+1,2)=0.;
       else (*vi)(xvi+0+1,2)= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);
       
     }

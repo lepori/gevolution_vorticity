@@ -602,7 +602,7 @@ int main(int argc, char **argv)
             fft_count++;
 #endif
             projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
-                projectFTvelocity(viFT, viFT, dx*dx);           // compute the vorticity field 
+                projectFTvelocity(viFT, viFT,1);           // compute the vorticity field 
 #ifdef CHECK_B
             evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
 #endif
