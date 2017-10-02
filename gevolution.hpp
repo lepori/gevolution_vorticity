@@ -1327,53 +1327,50 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 
-void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL)
+void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
 {
 
   Real  localCubePhi[8];
+  Real  localCubeChi[8];
   Real  localCubeT00[8];
   Real  localEdgeTi0[12];  
 
   Site xvi(vi->lattice());
   //Site xsmooth(vi->lattice());
   
-  for(xvi.first(); xvi.test(); xvi.next())
-    { 
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
-      if (source != NULL)
-        {
-          localCubeT00[0] = (*source)(xvi);
-          localCubeT00[1] = (*source)(xvi+2);
-          localCubeT00[2] = (*source)(xvi+1);
-          localCubeT00[3] = (*source)(xvi+1+2);
-          localCubeT00[4] = (*source)(xvi+0);
-          localCubeT00[5] = (*source)(xvi+0+2);
-          localCubeT00[6] = (*source)(xvi+0+1);
-          localCubeT00[7] = (*source)(xvi+0+1+2);
-        }
-
-        }
-    
+      
   for(xvi.first(); xvi.test(); xvi.next())
     {  
 
       for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
+      for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
       for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
 
-
-      if (phi != NULL)
+      if (chi != NULL)
 	{
-	  localCubePhi[0] = (*phi)(xvi);
-	  localCubePhi[1] = (*phi)(xvi+2);
-	  localCubePhi[2] = (*phi)(xvi+1);
-	  localCubePhi[3] = (*phi)(xvi+1+2);
-	  localCubePhi[4] = (*phi)(xvi+0);
-	  localCubePhi[5] = (*phi)(xvi+0+2);
-	  localCubePhi[6] = (*phi)(xvi+0+1);
-	  localCubePhi[7] = (*phi)(xvi+0+1+2);
+	  localCubeChi[0] = (*chi)(xvi);
+	  localCubeChi[1] = (*chi)(xvi+2);
+	  localCubeChi[2] = (*chi)(xvi+1);
+	  localCubeChi[3] = (*chi)(xvi+1+2);
+	  localCubeChi[4] = (*chi)(xvi+0);
+	  localCubeChi[5] = (*chi)(xvi+0+2);
+	  localCubeChi[6] = (*chi)(xvi+0+1);
+	  localCubeChi[7] = (*chi)(xvi+0+1+2);
 	}
 
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                                  
+      if (phi != NULL)
+        {
+          localCubePhi[0] = (*phi)(xvi);
+          localCubePhi[1] = (*phi)(xvi+2);
+          localCubePhi[2] = (*phi)(xvi+1);
+          localCubePhi[3] = (*phi)(xvi+1+2);
+          localCubePhi[4] = (*phi)(xvi+0);
+          localCubePhi[5] = (*phi)(xvi+0+2);
+          localCubePhi[6] = (*phi)(xvi+0+1);
+          localCubePhi[7] = (*phi)(xvi+0+1+2);
+        }
+
       if (source != NULL)                                                                                                                
         {                                                                                                                                
           localCubeT00[0] = (*source)(xvi);                                                          
@@ -1386,30 +1383,26 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
 	  localCubeT00[7] = (*source)(xvi+0+1+2); 
 	}
   
-      //for(xsmooth.first(); xsmooth.test(); xsmooth.next())
-      //	{ localCubeT00[0]+= 
-      //}
-      
 
       if (Bi != NULL)
         {
       
-	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]));
-	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]));
-	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]));
+	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
+	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
+	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
 
-	    localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]));
-	    localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]));
+	    localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]) + localCubeChi[4] + localCubeChi[6]);
+	    localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]) + localCubeChi[4] + localCubeChi[5]);
 
-	    localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]));
-	    localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]));
+	    localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]) + localCubeChi[2] + localCubeChi[6]);
+	    localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]) + localCubeChi[0] + localCubeChi[3]);
 
-	    localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5]));
-	    localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3]));
+	    localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5])+ localCubeChi[1] + localCubeChi[5]);
+	    localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3])+ localCubeChi[1] + localCubeChi[3]);
 
-	    localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]));
-	    localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]));
-	    localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]));
+	    localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]) + localCubeChi[3] + localCubeChi[7]);
+	    localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]) + localCubeChi[5] + localCubeChi[7]);
+	    localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]) + localCubeChi[6] + localCubeChi[7]);
 	    
         }
 
@@ -1452,112 +1445,3 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
     }
 }
 
- /*
-template<typename part, typename part_info, typename part_dataType>
-void projection_vi_project(Particles<part,part_info,part_dataType> * pcls, Field<Real> * T0i, Field<Real> * phi = NULL, double coeff = 1\
-			    .)
-{
-  if (T0i->lattice().halo() == 0)
-    {
-      cout<< "projection_T0i_project: target field needs halo > 0" << endl;
-      exit(-1);
-    }
-
-  Site xPart(pcls->lattice());
-  Site xT0i(T0i->lattice());
-
-  typename std::list<part>::iterator it;
-
-  Real referPos[3];
-  Real weightScalarGridDown[3];
-  Real weightScalarGridUp[3];
-  Real dx = pcls->res();
-
-  double mass = coeff / (dx*dx*dx);
-  mass *= *(double*)((char*)pcls->parts_info() + pcls->mass_offset());
-
-  Real w;
-  Real * q;
-  size_t offset_q = offsetof(part,vel);
-
-  Real  qi[12];
-  Real  localCubePhi[8];
-
-  for (int i = 0; i < 8; i++) localCubePhi[i] = 0;
-
-  for(xPart.first(), xT0i.first(); xPart.test(); xPart.next(), xT0i.next())
-    {
-
-      if(pcls->field()(xPart).size!=0)
-        {
-	  for(int i=0; i<3; i++)
-	    referPos[i] = xPart.coord(i)*dx;
-
-	  for(int i = 0; i < 12; i++) qi[i]=0.0;
-
-	  if (phi != NULL)
-	    {
-	      localCubePhi[0] = (*phi)(xT0i);
-	      localCubePhi[1] = (*phi)(xT0i+2);
-	      localCubePhi[2] = (*phi)(xT0i+1);
-	      localCubePhi[3] = (*phi)(xT0i+1+2);
-	      localCubePhi[4] = (*phi)(xT0i+0);
-	      localCubePhi[5] = (*phi)(xT0i+0+2);
-	      localCubePhi[6] = (*phi)(xT0i+0+1);
-	      localCubePhi[7] = (*phi)(xT0i+0+1+2);
-
-	    }
-
-	  for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
-	    {
-	      for (int i = 0; i < 3; i++)
-		{
-		  weightScalarGridUp[i] = ((*it).pos[i] - referPos[i]) / dx;
-		  weightScalarGridDown[i] = 1.0l - weightScalarGridUp[i];
-		}
-
-	      q = (Real*)((char*)&(*it)+offset_q);
-
-	      w = mass * q[0];
-
-	      qi[0] +=  w * weightScalarGridDown[1] * weightScalarGridDown[2];
-	      qi[1] +=  w * weightScalarGridUp[1]   * weightScalarGridDown[2];
-	      qi[2] +=  w * weightScalarGridDown[1] * weightScalarGridUp[2];
-	      qi[3] +=  w * weightScalarGridUp[1]   * weightScalarGridUp[2];
-
-	      w = mass * q[1];
-
-	      qi[4] +=  w * weightScalarGridDown[0] * weightScalarGridDown[2];
-	      qi[5] +=  w * weightScalarGridUp[0]   * weightScalarGridDown[2];
-	      qi[6] +=  w * weightScalarGridDown[0] * weightScalarGridUp[2];
-	      qi[7] +=  w * weightScalarGridUp[0]   * weightScalarGridUp[2];
-
-	      w = mass * q[2];
-
-	      qi[8] +=  w * weightScalarGridDown[0] * weightScalarGridDown[1];
-	      qi[9] +=  w * weightScalarGridUp[0]   * weightScalarGridDown[1];
-	      qi[10]+=  w * weightScalarGridDown[0] * weightScalarGridUp[1];
-	      qi[11]+=  w * weightScalarGridUp[0]   * weightScalarGridUp[1];
-	    }
-
-	  (*T0i)(xT0i,0) += qi[0] * (1. + localCubePhi[0] + localCubePhi[4]);
-	  (*T0i)(xT0i,1) += qi[4] * (1. + localCubePhi[0] + localCubePhi[2]);
-	  (*T0i)(xT0i,2) += qi[8] * (1. + localCubePhi[0] + localCubePhi[1]);
-
-	  (*T0i)(xT0i+0,1) += qi[5] * (1. + localCubePhi[4] + localCubePhi[6]);
-	  (*T0i)(xT0i+0,2) += qi[9] * (1. + localCubePhi[4] + localCubePhi[5]);
-	  (*T0i)(xT0i+1,0) += qi[1] * (1. + localCubePhi[2] + localCubePhi[6]);
-	  (*T0i)(xT0i+1,2) += qi[10] * (1. + localCubePhi[2] + localCubePhi[3]);
-
-	  (*T0i)(xT0i+2,0) += qi[2] * (1. + localCubePhi[1] + localCubePhi[5]);
-	  (*T0i)(xT0i+2,1) += qi[6] * (1. + localCubePhi[1] + localCubePhi[3]);
-
-	  (*T0i)(xT0i+1+2,0) += qi[3] * (1. + localCubePhi[3] + localCubePhi[7]);
-	  (*T0i)(xT0i+0+2,1) += qi[7] * (1. + localCubePhi[5] + localCubePhi[7]);
-	  (*T0i)(xT0i+0+1,2) += qi[11] * (1. + localCubePhi[6] + localCubePhi[7]);
-	}
-    }
-}
-
-#define projection_T0i_comm vectorProjectionCICNGP_comm
-*/

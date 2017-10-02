@@ -454,7 +454,7 @@ int main(int argc, char **argv)
                 if (sim.vector_flag == VECTOR_ELLIPTIC)
  
 		  {                     
-                    compute_vi_project(&vi, &source, a, &Bi,  &phi);
+                    compute_vi_project(&vi, &source, a, &Bi,  &phi, &chi);
                   }  
 
 		
