@@ -757,14 +757,13 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
 	}
 	if (sim.out_pk & MASK_VORT)
 		  {
-                    cout << "test \n";
-		    extractPowerSpectrum(*viFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
+                    extractPowerSpectrum(*viFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
 		    sprintf(filename, "%s%s%03d_wi.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * a * a * sim.numpts *                    sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.numpts * sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
 #ifdef CHECK_B		    
 		    extractPowerSpectrum(*viFT_check, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
 		    sprintf(filename, "%s%s%03d_wi_check.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * a * a * sim.numpts * sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.numpts * sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
 #endif
 		  }
 

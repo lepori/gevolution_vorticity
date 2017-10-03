@@ -390,16 +390,17 @@ void projectFTvector(Field<Cplx> & SiFT, Field<Cplx> & BiFT, const Real coeff = 
 }
 
 //////////////////////////                                                                                                     
-// project_velocity                                                                                                                 
-//////////////////////////                                                                                                              
-// Description:                                                                                                                       
+// project_velocity                                                                                                             
+//////////////////////////                                                                                                   
+// Description:                                                                                                             
 //   Compute the vorticity in Fourier space
 //   
-//                                                                                                                                   
-// Arguments:                                                                                                                         
+//                                                                                                                           
+// Arguments:                                                                                                              
 //   viFT       reference to the Fourier image of the velocity                                                                  
-//   wiFT       reference to the Fourier image of the vorticity field (can be identical to input)                                     
-// Returns:                                                                                                                              //                                                                                                                                       //////////////////////////                                                                                                                
+//   wiFT       reference to the Fourier image of the vorticity field (can be identical to input)                           
+// Returns:                                                                                                                       
+//                                                                                                                                 //////////////////////////                                                                                                                
 
 void projectFTvelocity(Field<Cplx> & viFT, Field<Cplx> & wiFT, const Real coeff = 1.)
 {
@@ -436,9 +437,13 @@ void projectFTvelocity(Field<Cplx> & viFT, Field<Cplx> & wiFT, const Real coeff 
 
       tmp = (kshift[k.coord(0)] * viFT(k, 0) + kshift[k.coord(1)] * viFT(k, 1) + kshift[k.coord(2)] * viFT(k, 2)) / k2;
 
-      wiFT(k, 0) = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp)* coeff; 
-      wiFT(k, 1) = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp)* coeff; 
-      wiFT(k, 2) = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp)* coeff; 
+      viFT(k, 0) = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp)* coeff; 
+      viFT(k, 1) = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp)* coeff; 
+      viFT(k, 2) = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp)* coeff; 
+      
+      wiFT(k, 0) =  Cplx(0., 1.)*(viFT(k, 1)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(1)]);
+      wiFT(k, 1) =- Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(0)]);
+      wiFT(k, 2) =  Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(1)] - viFT(k, 1)*kshift[k.coord(0)]);
     }
 
   free(gridk2);
@@ -1327,7 +1332,7 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 
-void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
+void compute_vi_project_old(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
 {
 
   Real  localCubePhi[8];
@@ -1445,3 +1450,216 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, double a 
     }
 }
 
+
+//////////////////////////                                                                                                             
+// projection_Ti0_project                                                                                                            
+//////////////////////////                                                                        
+// Description:                                                                                                             
+//   Particle-mesh projection for Ti0, including geometric corrections                                                      
+//               
+// Arguments:                                                                                                                            
+//   pcls       pointer to particle handler                                                                                              
+//   Ti0        pointer to target field                                                                                                 
+//   phi        pointer to Bardeen potential which characterizes the                                                                   
+//              geometric corrections (volume distortion); can be set to  
+//              NULL which will result in no corrections applied                                                                 
+//   coeff      coefficient applied to the projection operation (default 1)                                                          
+//                                                                                                                                      
+// Returns:                                                                                                                              
+//
+//////////////////////////                                                                                                               
+  
+
+template<typename part, typename part_info, typename part_dataType>
+void projection_Ti0_project(Particles<part,part_info,part_dataType> * pcls, Field<Real> * Ti0, Field<Real> * phi = NULL, double coeff = 1.)
+{
+  if (Ti0->lattice().halo() == 0)
+    {
+      cout<< "projection_Ti0_project: target field needs halo > 0" << endl;
+      exit(-1);
+    }
+
+  Site xPart(pcls->lattice());
+  Site xTi0(Ti0->lattice());
+
+  typename std::list<part>::iterator it;
+
+  Real referPos[3];
+  Real weightScalarGridDown[3];
+  Real weightScalarGridUp[3];
+  Real dx = pcls->res();
+
+  double mass = coeff / (dx*dx*dx);
+  mass *= *(double*)((char*)pcls->parts_info() + pcls->mass_offset());
+
+  Real w;
+  Real * q;
+  size_t offset_q = offsetof(part,vel);
+
+  Real  qi[12];
+  Real  localCubePhi[8];
+
+  for (int i = 0; i < 8; i++) localCubePhi[i] = 0;
+
+  for(xPart.first(), xTi0.first(); xPart.test(); xPart.next(), xTi0.next())
+    {
+
+      if(pcls->field()(xPart).size!=0)
+        {
+	  for(int i=0; i<3; i++)
+	    referPos[i] = xPart.coord(i)*dx;
+
+	  for(int i = 0; i < 12; i++) qi[i]=0.0;
+
+	  if (phi != NULL)
+	    {
+	      localCubePhi[0] = (*phi)(xTi0);
+	      localCubePhi[1] = (*phi)(xTi0+2);
+	      localCubePhi[2] = (*phi)(xTi0+1);
+	      localCubePhi[3] = (*phi)(xTi0+1+2);
+	      localCubePhi[4] = (*phi)(xTi0+0);
+	      localCubePhi[5] = (*phi)(xTi0+0+2);
+	      localCubePhi[6] = (*phi)(xTi0+0+1);
+	      localCubePhi[7] = (*phi)(xTi0+0+1+2);
+
+	    }
+
+	  for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
+	    {
+	      for (int i = 0; i < 3; i++)
+		{
+		  weightScalarGridUp[i] = ((*it).pos[i] - referPos[i]) / dx;
+		  weightScalarGridDown[i] = 1.0l - weightScalarGridUp[i];
+		}
+
+	      q = (Real*)((char*)&(*it)+offset_q);
+
+	      w = mass * q[0];
+
+	      qi[0] +=  w * weightScalarGridDown[1] * weightScalarGridDown[2];
+	      qi[1] +=  w * weightScalarGridUp[1]   * weightScalarGridDown[2];
+	      qi[2] +=  w * weightScalarGridDown[1] * weightScalarGridUp[2];
+	      qi[3] +=  w * weightScalarGridUp[1]   * weightScalarGridUp[2];
+
+	      w = mass * q[1];
+
+	      qi[4] +=  w * weightScalarGridDown[0] * weightScalarGridDown[2];
+	      qi[5] +=  w * weightScalarGridUp[0]   * weightScalarGridDown[2];
+	      qi[6] +=  w * weightScalarGridDown[0] * weightScalarGridUp[2];
+	      qi[7] +=  w * weightScalarGridUp[0]   * weightScalarGridUp[2];
+
+	      w = mass * q[2];
+
+	      qi[8] +=  w * weightScalarGridDown[0] * weightScalarGridDown[1];
+	      qi[9] +=  w * weightScalarGridUp[0]   * weightScalarGridDown[1];
+	      qi[10]+=  w * weightScalarGridDown[0] * weightScalarGridUp[1];
+	      qi[11]+=  w * weightScalarGridUp[0]   * weightScalarGridUp[1];
+	    }
+
+	  (*Ti0)(xTi0,0) += qi[0] * (1. + 3.*(localCubePhi[0] + localCubePhi[4]));
+	  (*Ti0)(xTi0,1) += qi[4] * (1. + 3.*(localCubePhi[0] + localCubePhi[2]));
+	  (*Ti0)(xTi0,2) += qi[8] * (1. + 3.*(localCubePhi[0] + localCubePhi[1]));
+				     
+	  (*Ti0)(xTi0+0,1) += qi[5] * (1. + 3.*(localCubePhi[4] + localCubePhi[6]));
+	  (*Ti0)(xTi0+0,2) += qi[9] * (1. + 3.*(localCubePhi[4] + localCubePhi[5]));
+				       
+	  (*Ti0)(xTi0+1,0) += qi[1] * (1. + 3.*(localCubePhi[2] + localCubePhi[6]));
+	  (*Ti0)(xTi0+1,2) += qi[10] * (1. + 3.*(localCubePhi[2] + localCubePhi[3]));
+
+	  (*Ti0)(xTi0+2,0) += qi[2] * (1. + 3.*(localCubePhi[1] + localCubePhi[5]));
+	  (*Ti0)(xTi0+2,1) += qi[6] * (1. + 3.*(localCubePhi[1] + localCubePhi[3]));
+
+	  (*Ti0)(xTi0+1+2,0) += qi[3] * (1. + 3.*(localCubePhi[3] + localCubePhi[7]));
+	  (*Ti0)(xTi0+0+2,1) += qi[7] * (1. + 3.*(localCubePhi[5] + localCubePhi[7]));
+	  (*Ti0)(xTi0+0+1,2) += qi[11] * (1. + 3.*(localCubePhi[6] + localCubePhi[7]));
+
+          
+        }
+    }
+}
+
+#define projection_Ti0_comm vectorProjectionCICNGP_comm
+
+void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL, double a = 1.)
+
+ {                                                                                                                                         
+                                                                                                            
+ Real  localCubeT00[8];                                                                                                                    
+ Real  localEdgeTi0[12];                                                                                                                   
+                                                                                                                                    
+ Site xvi(vi->lattice());                                                                                                                  
+   
+ for(xvi.first(); xvi.test(); xvi.next())                                                                                                  
+    {                                                                                                                                   
+      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;                                                                                  
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                               
+      
+
+      if (source != NULL)                                                                                                                   
+        {                                                                                                                                  
+          localCubeT00[0] = (*source)(xvi);                                                                                                
+          localCubeT00[1] = (*source)(xvi+2);                                                                                              
+          localCubeT00[2] = (*source)(xvi+1);                                                                                              
+          localCubeT00[3] = (*source)(xvi+1+2);                                                                                            
+          localCubeT00[4] = (*source)(xvi+0);                                                                                              
+          localCubeT00[5] = (*source)(xvi+0+2);                                                                                            
+          localCubeT00[6] = (*source)(xvi+0+1);                                                                                            
+          localCubeT00[7] = (*source)(xvi+0+1+2);                                                                                          
+        }
+                                                                                                                                           
+      if (Ti0 != NULL)                                                                                                                 
+
+        {
+          localEdgeTi0[0] = (*Ti0)(xvi);
+          localEdgeTi0[1] = (*Ti0)(xvi+2);
+          localEdgeTi0[2] = (*Ti0)(xvi+1);
+          localEdgeTi0[3] = (*Ti0)(xvi+1+2);
+          localEdgeTi0[4] = (*Ti0)(xvi+0);
+          localEdgeTi0[5] = (*Ti0)(xvi+0+2);
+          localEdgeTi0[6] = (*Ti0)(xvi+0+1);
+          localEdgeTi0[7] = (*Ti0)(xvi+0+1+2);
+        }
+
+
+
+      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;                                               
+      else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);                                              
+                                                                                                                                  
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,0)= 0.;                                                           
+      else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);                                                  
+
+      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;                                                                
+      else (*vi)(xvi,2) = 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);                                                    
+                                                                                                                                         
+      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=0.;                                                           
+      else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);                                                   
+                                                                                                                                          
+      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;                                                           
+      else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);                                                     
+                                                                                                                                       
+      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;                                                            
+      else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);                                                   
+                                                                                                                                           
+      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=0.;                                                               
+      else (*vi)(xvi+1,2)= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);                                                      
+                                                                                                                                           
+      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=0.;                                                               
+      else (*vi)(xvi+2,0)= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);                                                       
+                                                                                                                                           
+      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=0.;                                                               
+      else (*vi)(xvi+2,1)= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);                                                       
+                                                                                                                                           
+      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=0.;                                                       
+      else (*vi)(xvi+1+2,0)= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
+      
+      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)=0.;                                                             
+      else (*vi)(xvi+0+2,1)= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);                                                     
+                                                                                                                                           
+      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=0.;                                                             
+      else (*vi)(xvi+0+1,2)= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);                                                 
+ 
+      //cout << "test vi" << (*vi)(xvi,0) << "\n";   
+      
+    }
+
+ }

@@ -453,9 +453,20 @@ int main(int argc, char **argv)
 
                 if (sim.vector_flag == VECTOR_ELLIPTIC)
  
-		  {                     
-                    compute_vi_project(&vi, &source, a, &Bi,  &phi, &chi);
+		  { projection_init(&vi);
+                    projection_Ti0_project(&pcls_cdm, &vi, &phi); //Here we compute a^4 Ti0 (stored in vi)
+                    projection_T0i_comm(&vi); 
+                    vi.updateHalo();
+                    //for (x.first(); x.test(); x.next())
+                    //  {cout << "test vi " << vi(x) << "\n";
+                    //  }                    
+                    compute_vi_project(&vi, &source, &vi, a);
+                    //for (x.first(); x.test(); x.next())
+		    //  {cout << "test vi   " << vi(x) << "\n";
+		    //  }
                   }  
+
+                  
 
 		
 		projection_init(&Sij);
@@ -504,7 +515,6 @@ int main(int argc, char **argv)
 #endif
 		
 				solveModifiedPoissonFT(scalarFT, scalarFT, 1. / (dx * dx), 3. * Hconf(a, fourpiG, cosmo) / dtau_old);  // phi update (k-space)
-
 #ifdef BENCHMARK
 				ref2_time= MPI_Wtime();
 #endif		
@@ -597,12 +607,19 @@ int main(int argc, char **argv)
 #endif
 			plan_Bi.execute(FFT_FORWARD);
                         plan_vi.execute(FFT_FORWARD);
+                        //for (kFT.first(); kFT.test(); kFT.next())
+			//  {cout << "test viFT 0 " << viFT(kFT) << "\n";
+			//  }
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
 		        projectFTvelocity(viFT, viFT, dx*dx);           // compute the vorticity field 
+
+                        //for (kFT.first(); kFT.test(); kFT.next())
+                        //  {cout << "test viFT 1 " << viFT(kFT) << "\n";
+                        //  }
 #ifdef CHECK_B
 			evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
 #endif
