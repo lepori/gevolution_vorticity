@@ -1332,7 +1332,7 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 
-void compute_vi_project_old(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
+void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
 {
 
   Real  localCubePhi[8];
@@ -1414,7 +1414,7 @@ void compute_vi_project_old(Field<Real> * vi, Field<Real> * source = NULL, doubl
       if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;
       else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);
  
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,0)= 0.;
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,1)= 0.;
       else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);
 
       if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;
@@ -1468,7 +1468,7 @@ void compute_vi_project_old(Field<Real> * vi, Field<Real> * source = NULL, doubl
 // Returns:                                                                                                                              
 //
 //////////////////////////                                                                                                               
-  
+
 
 template<typename part, typename part_info, typename part_dataType>
 void projection_Ti0_project(Particles<part,part_info,part_dataType> * pcls, Field<Real> * Ti0, Field<Real> * phi = NULL, double coeff = 1.)
@@ -1572,42 +1572,129 @@ void projection_Ti0_project(Particles<part,part_info,part_dataType> * pcls, Fiel
 	  (*Ti0)(xTi0+1+2,0) += qi[3] * (1. + 3.*(localCubePhi[3] + localCubePhi[7]));
 	  (*Ti0)(xTi0+0+2,1) += qi[7] * (1. + 3.*(localCubePhi[5] + localCubePhi[7]));
 	  (*Ti0)(xTi0+0+1,2) += qi[11] * (1. + 3.*(localCubePhi[6] + localCubePhi[7]));
-
           
         }
     }
 }
 
+
 #define projection_Ti0_comm vectorProjectionCICNGP_comm
 
+void compute_vi_project_2(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL, double a = 1.)
+
+ {                                                                                                                                   
+                                                                                                            
+ Real  localCubeT00[8];                                                                                                            
+ Real  localEdgeTi0[12];                                                                                                            
+                                                                                                                               
+ Site xvi(vi->lattice());                                                                                                           
+   
+ for(xvi.first(); xvi.test(); xvi.next())                                                                                       
+    {                                                                                                                                   
+      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;                                                                               
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                           
+
+      if (source != NULL)                                                                                                               
+        {                                                                                                                               
+          localCubeT00[0] = (*source)(xvi);                                                                                        
+          localCubeT00[1] = (*source)(xvi+2);                                                                                         
+          localCubeT00[2] = (*source)(xvi+1);                                                                                         
+          localCubeT00[3] = (*source)(xvi+1+2);                                                                                       
+          localCubeT00[4] = (*source)(xvi+0);                                                                                         
+          localCubeT00[5] = (*source)(xvi+0+2);
+          localCubeT00[6] = (*source)(xvi+0+1);                                                                                      
+          localCubeT00[7] = (*source)(xvi+0+1+2);                                                                                   
+        }
+                                                                                                                                    
+      if (Ti0 != NULL)                                                                                                                 
+
+        {
+          localEdgeTi0[0] = (*Ti0)(xvi,0);
+          localEdgeTi0[1] = (*Ti0)(xvi+1,0);
+          localEdgeTi0[2] = (*Ti0)(xvi+2,0);
+          localEdgeTi0[3] = (*Ti0)(xvi+1+2,0);
+	  localEdgeTi0[4] = (*Ti0)(xvi,1);
+          localEdgeTi0[5] = (*Ti0)(xvi+0,1);
+          localEdgeTi0[6] = (*Ti0)(xvi+2,1);
+          localEdgeTi0[7] = (*Ti0)(xvi+0+2,1);
+          localEdgeTi0[8] = (*Ti0)(xvi,2);
+          localEdgeTi0[9] = (*Ti0)(xvi+0,2);
+          localEdgeTi0[10]= (*Ti0)(xvi+1,2);
+          localEdgeTi0[11]= (*Ti0)(xvi+0+1,2);
+        }
+
+
+
+      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;                                               
+      else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);                                              
+                                                                                                                                  
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,1)= 0.;                                                           
+      else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);                                                  
+
+      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;                                                       
+      else (*vi)(xvi,2) = 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);                                                    
+                                                                                                                                         
+      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=0.;                                                           
+      else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);                                                   
+                                                                                                                                         
+      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;                                                           
+      else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);                                                  
+                                                                                                                                       
+      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;                                                            
+      else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);                                                   
+                                                                                                                                        
+      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=0.;                                                        
+      else (*vi)(xvi+1,2)= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);                                                 
+                                                                                                                                  
+      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=0.;                                                        
+      else (*vi)(xvi+2,0)= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);                                               
+                                                                                                                                     
+      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=0.;                                                        
+      else (*vi)(xvi+2,1)= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);                                                  
+                                                                                                                                 
+      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=0.;                                                       
+      else (*vi)(xvi+1+2,0)= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
+
+      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)=0.;                                                          
+      else (*vi)(xvi+0+2,1)= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);                                        
+                                                                                                                  
+      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=0.;                                                      
+      else (*vi)(xvi+0+1,2)= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);                                                 
+      
+      cout << "test vi  " << (*vi)(xvi,0) << " " << localCubeT00[0] + localCubeT00[4] << " " << localEdgeTi0[0] << "\n";
+    
+    }
+
+ }
+
+/*
 void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL, double a = 1.)
 
- {                                                                                                                                         
-                                                                                                            
- Real  localCubeT00[8];                                                                                                                    
- Real  localEdgeTi0[12];                                                                                                                   
-                                                                                                                                    
- Site xvi(vi->lattice());                                                                                                                  
-   
- for(xvi.first(); xvi.test(); xvi.next())                                                                                                  
-    {                                                                                                                                   
-      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;                                                                                  
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;                                                                               
-      
+{                                                                                                                                       \
+  Real  localCubeT00[8];                                                                                                              
+  Real  localEdgeTi0[12];                                                                                                               
+  Site xvi(vi->lattice());                                                                                                             
+  Site yvi(vi->lattice());
 
-      if (source != NULL)                                                                                                                   
-        {                                                                                                                                  
-          localCubeT00[0] = (*source)(xvi);                                                                                                
-          localCubeT00[1] = (*source)(xvi+2);                                                                                              
-          localCubeT00[2] = (*source)(xvi+1);                                                                                              
-          localCubeT00[3] = (*source)(xvi+1+2);                                                                                            
-          localCubeT00[4] = (*source)(xvi+0);                                                                                              
-          localCubeT00[5] = (*source)(xvi+0+2);                                                                                            
-          localCubeT00[6] = (*source)(xvi+0+1);                                                                                            
-          localCubeT00[7] = (*source)(xvi+0+1+2);                                                                                          
+
+  for(xvi.first(); xvi.test(); xvi.next())                                                                                          
+    {
+      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;                                                                              
+      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
+      
+      if (source != NULL)
+	{
+          localCubeT00[0] = (*source)(xvi);
+          localCubeT00[1] = (*source)(xvi+2);
+          localCubeT00[2] = (*source)(xvi+1);
+          localCubeT00[3] = (*source)(xvi+1+2);
+          localCubeT00[4] = (*source)(xvi+0);
+          localCubeT00[5] = (*source)(xvi+0+2);
+          localCubeT00[6] = (*source)(xvi+0+1);
+          localCubeT00[7] = (*source)(xvi+0+1+2);
         }
-                                                                                                                                           
-      if (Ti0 != NULL)                                                                                                                 
+
+      if (Ti0 != NULL)
 
         {
           localEdgeTi0[0] = (*Ti0)(xvi);
@@ -1619,47 +1706,67 @@ void compute_vi_project(Field<Real> * vi, Field<Real> * source = NULL, Field<Rea
           localEdgeTi0[6] = (*Ti0)(xvi+0+1);
           localEdgeTi0[7] = (*Ti0)(xvi+0+1+2);
         }
-
-
-
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;                                               
-      else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);                                              
-                                                                                                                                  
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,0)= 0.;                                                           
-      else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);                                                  
-
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;                                                                
-      else (*vi)(xvi,2) = 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);                                                    
-                                                                                                                                         
-      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=0.;                                                           
-      else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);                                                   
-                                                                                                                                          
-      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;                                                           
-      else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);                                                     
-                                                                                                                                       
-      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;                                                            
-      else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);                                                   
-                                                                                                                                           
-      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=0.;                                                               
-      else (*vi)(xvi+1,2)= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);                                                      
-                                                                                                                                           
-      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=0.;                                                               
-      else (*vi)(xvi+2,0)= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);                                                       
-                                                                                                                                           
-      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=0.;                                                               
-      else (*vi)(xvi+2,1)= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);                                                       
-                                                                                                                                           
-      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=0.;                                                       
-      else (*vi)(xvi+1+2,0)= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
       
-      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)=0.;                                                             
-      else (*vi)(xvi+0+2,1)= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);                                                     
-                                                                                                                                           
-      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=0.;                                                             
-      else (*vi)(xvi+0+1,2)= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);                                                 
- 
-      //cout << "test vi" << (*vi)(xvi,0) << "\n";   
-      
+
+      for(yvi.first(); yvi.test(); yvi.next()) 
+
+	{   localEdgeTi0[0] += (*Ti0)(yvi)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+                                           exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+                                           exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[1] += (*Ti0)(yvi+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+                                             exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+                                             exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[2] += (*Ti0)(yvi+1)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                     exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                     exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[3] += (*Ti0)(yvi+1+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[4] += (*Ti0)(yvi+0)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                     exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                     exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[5] += (*Ti0)(yvi+0+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[6] += (*Ti0)(yvi+0+1)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                       exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[7] += (*Ti0)(yvi+0+1+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	                                         exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	                                         exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+
+           
+            localEdgeTi0[0] += (*Ti0)(yvi)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[1] += (*Ti0)(yvi+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[2] += (*Ti0)(yvi+1)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[3] += (*Ti0)(yvi+1+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[4] += (*Ti0)(yvi+0)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+            localEdgeTi0[5] += (*Ti0)(yvi+0+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[6] += (*Ti0)(yvi+0+1)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+	    localEdgeTi0[7] += (*Ti0)(yvi+0+1+2)*exp(-( pow((xvi.coord(0)- yvi.coord(0)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(1)- yvi.coord(1)), 2) )/(2.*sig2) )*
+	      exp(-( pow((xvi.coord(2)- yvi.coord(2)), 2) )/(2.*sig2) );
+
+
+	}
+
     }
 
- }
+}
+
+
+*/

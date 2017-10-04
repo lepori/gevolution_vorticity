@@ -454,16 +454,17 @@ int main(int argc, char **argv)
                 if (sim.vector_flag == VECTOR_ELLIPTIC)
  
 		  { projection_init(&vi);
-                    projection_Ti0_project(&pcls_cdm, &vi, &phi); //Here we compute a^4 Ti0 (stored in vi)
-                    projection_T0i_comm(&vi); 
-                    vi.updateHalo();
+                    //projection_Ti0_project(&pcls_cdm, &vi, &phi); //Here we compute a^4 Ti0 (stored in vi)
+                    //projection_T0i_comm(&vi); 
+                    //vi.updateHalo();
                     //for (x.first(); x.test(); x.next())
                     //  {cout << "test vi " << vi(x) << "\n";
-                    //  }                    
-                    compute_vi_project(&vi, &source, &vi, a);
+                    //  }                     
+                    //compute_vi_project_2(&vi, &source, &vi, 1.);
                     //for (x.first(); x.test(); x.next())
 		    //  {cout << "test vi   " << vi(x) << "\n";
 		    //  }
+                    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);
                   }  
 
                   

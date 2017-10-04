@@ -2239,9 +2239,10 @@ void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const 
 	Bi->updateHalo();	// B initialized
 	
 	projection_init(vi);
-        projection_Ti0_project(pcls_cdm, vi, phi);
-        projection_Ti0_comm(vi);
-        compute_vi_project(vi, source, vi, a);
+        //projection_Ti0_project(pcls_cdm, vi, phi);
+        //projection_Ti0_comm(vi);
+        //compute_vi_project_2(vi, source, vi, 1.);
+        compute_vi_project_1(vi, source, 1., Bi, phi, chi);
         plan_vi->execute(FFT_FORWARD);
         projectFTvelocity(*viFT, *viFT, 1.0 / (double) sim.numpts / (double) sim.numpts);
         plan_vi->execute(FFT_BACKWARD);
