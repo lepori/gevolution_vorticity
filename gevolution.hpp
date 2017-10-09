@@ -402,7 +402,7 @@ void projectFTvector(Field<Cplx> & SiFT, Field<Cplx> & BiFT, const Real coeff = 
 // Returns:                                                                                                                       
 //                                                                                                                                 //////////////////////////                                                                                                                
 
-void projectFTvelocity(Field<Cplx> & viFT, Field<Cplx> & wiFT, const Real coeff = 1.)
+void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coeff = 1.)
 {
   const int linesize = wiFT.lattice().size(1);
   int i;
@@ -410,7 +410,6 @@ void projectFTvelocity(Field<Cplx> & viFT, Field<Cplx> & wiFT, const Real coeff 
   Cplx * kshift;
   rKSite k(wiFT.lattice());
   Real k2;
-  Cplx tmp(0., 0.);
 
   gridk2 = (Real *) malloc(linesize * sizeof(Real));
   kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
@@ -433,22 +432,67 @@ void projectFTvelocity(Field<Cplx> & viFT, Field<Cplx> & wiFT, const Real coeff 
 
   for (; k.test(); k.next())
     {
-      k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
-
-      tmp = (kshift[k.coord(0)] * viFT(k, 0) + kshift[k.coord(1)] * viFT(k, 1) + kshift[k.coord(2)] * viFT(k, 2)) / k2;
-
-      viFT(k, 0) = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp)* coeff; 
-      viFT(k, 1) = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp)* coeff; 
-      viFT(k, 2) = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp)* coeff; 
-      
-      wiFT(k, 0) =  Cplx(0., 1.)*(viFT(k, 1)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(1)]);
-      wiFT(k, 1) =- Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(0)]);
-      wiFT(k, 2) =  Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(1)] - viFT(k, 1)*kshift[k.coord(0)]);
+      wiFT(k, 0) =   Cplx(0., 1.)*(viFT(k, 1)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(1)])* coeff;
+      wiFT(k, 1) = - Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(0)])* coeff;
+      wiFT(k, 2) =   Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(1)] - viFT(k, 1)*kshift[k.coord(0)])* coeff;
     }
 
   free(gridk2);
   free(kshift);
 }
+
+//////////////////////////                                                                                                     
+// project_velocity_theta                                                                                                             
+//////////////////////////                                                                                                   
+// Description:                                                                                                             
+//   Compute the diverge of the velocity in Fourier space
+//   
+//                                                                                                                           
+// Arguments:                                                                                                              
+//   viFT       reference to the Fourier image of the velocity                                                                  
+//   thFT       reference to the Fourier image of the theta field (can be identical to input)                           
+// Returns:                                                                                                                       
+//                                                                                                                                 
+//////////////////////////                                                                                                                
+
+void projectFTvelocity_th(Field<Cplx> & thFT, Field<Cplx> & viFT, const Real coeff = 1.)
+{
+  const int linesize = thFT.lattice().size(1);
+  int i;
+  Real * gridk2;
+  Cplx * kshift;
+  rKSite k(thFT.lattice());
+  Real k2;
+  Cplx tmp(0., 0.);
+
+  gridk2 = (Real *) malloc(linesize * sizeof(Real));
+  kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
+
+  for (i = 0; i < linesize; i++)
+    {
+      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      kshift[i] = gridk2[i] * Cplx(cos(M_PI * (Real) i / (Real) linesize), -sin(M_PI * (Real) i / (Real) linesize));
+      gridk2[i] *= gridk2[i];
+    }
+
+  k.first();
+  if (k.coord(0) == 0)
+    {
+      thFT(k) = Cplx(0.,0.);
+      k.next();
+    }
+
+  for (; k.test(); k.next())
+    {
+     thFT(k) = -Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(0)] + viFT(k, 1)*kshift[k.coord(1)] + viFT(k, 2)*kshift[k.coord(2)])* coeff;
+     //cout << "theta_k  " << thFT(k) << "\n";
+    }
+
+  free(gridk2);
+  free(kshift);
+}
+
+
 
 //////////////////////////
 // projectFTtensor
@@ -1450,8 +1494,28 @@ void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double 
     }
 }
 
+void initialize_th(Field<Real> * th)
+{
+  Site xth(th->lattice());
+      
+  for(xth.first(); xth.test(); xth.next())
+    {  
 
-//////////////////////////                                                                                                             
+          (*th)(xth)=0.;
+          (*th)(xth+2)=0.;
+          (*th)(xth+1)=0.;
+          (*th)(xth+1+2)=0.;
+          (*th)(xth+0)=0.;
+          (*th)(xth+0+2)=0.;
+          (*th)(xth+0+1)=0.;
+          (*th)(xth+0+1+2)=0.;
+      
+    }
+}
+
+
+
+//////////////////////////                                                                                                    
 // projection_Ti0_project                                                                                                            
 //////////////////////////                                                                        
 // Description:                                                                                                             

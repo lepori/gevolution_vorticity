@@ -400,7 +400,7 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 // 
 //////////////////////////
 
-void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const double a, const int pkcount, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij, Field<Real> * vi, Field<Cplx> * viFT, PlanFFT<Cplx> * plan_vi, Field<Real> * Bi_check = NULL, Field<Cplx> * BiFT_check = NULL, PlanFFT<Cplx> * plan_Bi_check = NULL, Field<Real> * vi_check = NULL, Field<Cplx> * viFT_check = NULL, PlanFFT<Cplx> * plan_vi_check = NULL)
+void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const double a, const int pkcount, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij, Field<Real> * vi, Field<Cplx> * viFT, PlanFFT<Cplx> * plan_vi, Field<Real> * wi, Field<Cplx> * wiFT, PlanFFT<Cplx> * plan_wi, Field<Real> * th, Field<Cplx> * thFT, PlanFFT<Cplx> * plan_th, Field<Real> * Bi_check = NULL, Field<Cplx> * BiFT_check = NULL, PlanFFT<Cplx> * plan_Bi_check = NULL, Field<Real> * vi_check = NULL, Field<Cplx> * viFT_check = NULL, PlanFFT<Cplx> * plan_vi_check = NULL)
 {
 	char filename[2*PARAM_MAX_LENGTH+24];
 	char buffer[64];
@@ -758,12 +758,21 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
 	if (sim.out_pk & MASK_VORT)
 		  {
                     extractPowerSpectrum(*viFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
-		    sprintf(filename, "%s%s%03d_wi.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a*sim.numpts * sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
+		    sprintf(filename, "%s%s%03d_vi.dat", sim.output_path, sim.basename_pk, pkcount);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * sim.numpts*sim.numpts*2. * M_PI * M_PI, filename, "power spectrum of vi", a);
+                    extractPowerSpectrum(*wiFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
+                    sprintf(filename, "%s%s%03d_wi.dat", sim.output_path, sim.basename_pk, pkcount);
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * sim.numpts*sim.numpts*2. * M_PI * M_PI, filename, "power spectrum of wi", a);
+                    extractPowerSpectrum(*thFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
+                    sprintf(filename, "%s%s%03d_th.dat", sim.output_path, sim.basename_pk, pkcount);
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * sim.numpts*sim.numpts*2. * M_PI * M_PI, filename, "power spectrum of th", a);  
+
+
+
 #ifdef CHECK_B		    
 		    extractPowerSpectrum(*viFT_check, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
-		    sprintf(filename, "%s%s%03d_wi_check.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a*sim.numpts * sim.numpts * 2. * M_PI * M_PI, filename, "power spectrum of wi", a);
+		    sprintf(filename, "%s%s%03d_vi_check.dat", sim.output_path, sim.basename_pk, pkcount);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a* 2. * M_PI * M_PI, filename, "power spectrum of vi", a);
 #endif
 		  }
 

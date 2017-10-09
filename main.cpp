@@ -207,28 +207,37 @@ int main(int argc, char **argv)
 	Field<Real> Sij;
 	Field<Real> Bi;
         Field<Real> vi;
+        Field<Real> wi;
+        Field<Real> th;
 	Field<Cplx> scalarFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
         Field<Cplx> viFT;
- 	
+        Field<Cplx> wiFT;
+        Field<Cplx> thFT; 	
+
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
+        th.initialize(lat,1); 
 	scalarFT.initialize(latFT,1);
+        thFT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
+        PlanFFT<Cplx> plan_th(&th, &thFT);
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
 	PlanFFT<Cplx> plan_Sij(&Sij, &SijFT);
         vi.initialize(lat,3);
+        wi.initialize(lat,3);
 	Bi.initialize(lat,3);
         viFT.initialize(latFT,3);
+        wiFT.initialize(latFT,3);
 	BiFT.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi(&Bi, &BiFT);
         PlanFFT<Cplx> plan_vi(&vi, &viFT);
-        //PlanFFT<Cplx> plan_wi(&wiFT);
+        PlanFFT<Cplx> plan_wi(&wi, &wiFT);
 
 #ifdef CHECK_B
 	Field<Real> Bi_check;
@@ -300,7 +309,7 @@ int main(int argc, char **argv)
 	dtau_old = 0.;
 	
 	if (ic.generator == ICGEN_BASIC)
-	  generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi,&vi, &source, &Sij, &scalarFT, &BiFT, &viFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi,&plan_vi, &plan_source, &plan_Sij); // generates ICs on the fly
+	  generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &vi, &wi, &th, &scalarFT, &BiFT, &SijFT, &viFT, &wiFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_vi, &plan_wi, &plan_th); // generates ICs on the fly
 	else if (ic.generator == ICGEN_READ_FROM_DISK)
 		readIC(sim, ic, cosmo, fourpiG, a, tau, dtau, dtau_old, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, cycle, snapcount, pkcount, restartcount);
 #ifdef ICGEN_PREVOLUTION
@@ -454,17 +463,11 @@ int main(int argc, char **argv)
                 if (sim.vector_flag == VECTOR_ELLIPTIC)
  
 		  { projection_init(&vi);
-                    //projection_Ti0_project(&pcls_cdm, &vi, &phi); //Here we compute a^4 Ti0 (stored in vi)
-                    //projection_T0i_comm(&vi); 
-                    //vi.updateHalo();
-                    //for (x.first(); x.test(); x.next())
-                    //  {cout << "test vi " << vi(x) << "\n";
-                    //  }                     
-                    //compute_vi_project_2(&vi, &source, &vi, 1.);
-                    //for (x.first(); x.test(); x.next())
-		    //  {cout << "test vi   " << vi(x) << "\n";
-		    //  }
-                    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);
+                    projection_init(&wi);
+                    projection_init(&th);
+                    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);                                
+                    compute_vi_project_1(&wi, &source, 1., &Bi, &phi, &chi);
+                    initialize_th(&th);
                   }  
 
                   
@@ -480,9 +483,6 @@ int main(int argc, char **argv)
 				projection_Tij_project(pcls_ncdm+i, &Sij, a, &phi);
 		}
 		projection_Tij_comm(&Sij);
-		//Here we add something to compute the velocity field
-		//compute_vi_project
-
 		
 #ifdef BENCHMARK 
 		projection_time += MPI_Wtime() - cycle_start_time;
@@ -607,7 +607,7 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif
 			plan_Bi.execute(FFT_FORWARD);
-                        plan_vi.execute(FFT_FORWARD);
+                        plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
                         //for (kFT.first(); kFT.test(); kFT.next())
 			//  {cout << "test viFT 0 " << viFT(kFT) << "\n";
 			//  }
@@ -616,7 +616,8 @@ int main(int argc, char **argv)
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
-		        projectFTvelocity(viFT, viFT, dx*dx);           // compute the vorticity field 
+		        projectFTvelocity_wi(wiFT, viFT, dx*dx);      // compute the vorticity field 
+			projectFTvelocity_th(thFT, viFT, dx*dx);      // compute the div_vi field
 
                         //for (kFT.first(); kFT.test(); kFT.next())
                         //  {cout << "test viFT 1 " << viFT(kFT) << "\n";
@@ -641,6 +642,8 @@ int main(int argc, char **argv)
 #endif
  			Bi.updateHalo();  // communicate halo values
                         vi.updateHalo(); 
+                        wi.updateHalo();
+                        th.updateHalo();
 		}
 
 #ifdef BENCHMARK 
@@ -673,9 +676,9 @@ int main(int argc, char **argv)
 			COUT << COLORTEXT_CYAN << " writing power spectra" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B			
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &wi,&wiFT, &plan_wi, &th, &thFT, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
 #else
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi);
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &wi, &wiFT, &plan_wi, &th,&thFT, &plan_th);
 #endif
 
 			pkcount++;

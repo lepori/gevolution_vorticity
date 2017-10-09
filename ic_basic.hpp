@@ -1633,7 +1633,7 @@ double applyMomentumDistribution(Particles<part_simple,part_simple_info,part_sim
 // 
 //////////////////////////
 
-void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const double fourpiG, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, double * maxvel, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * vi, Field<Real> * source, Field<Real> * Sij, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * viFT, Field<Cplx> * SijFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_vi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij)
+void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const double fourpiG, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, double * maxvel, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Real> * vi, Field<Real> * wi, Field<Real> * th,Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, Field<Cplx> * viFT, Field<Cplx> * wiFT, Field<Cplx> * thFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij, PlanFFT<Cplx> * plan_vi, PlanFFT<Cplx> * plan_wi, PlanFFT<Cplx> * plan_th)
 {
 	int i, j, p;
 	double a = 1. / (1. + sim.z_in);
@@ -2239,14 +2239,28 @@ void generateIC_basic(metadata & sim, icsettings & ic, cosmology & cosmo, const 
 	Bi->updateHalo();	// B initialized
 	
 	projection_init(vi);
-        //projection_Ti0_project(pcls_cdm, vi, phi);
-        //projection_Ti0_comm(vi);
-        //compute_vi_project_2(vi, source, vi, 1.);
+        projection_init(th);
         compute_vi_project_1(vi, source, 1., Bi, phi, chi);
         plan_vi->execute(FFT_FORWARD);
-        projectFTvelocity(*viFT, *viFT, 1.0 / (double) sim.numpts / (double) sim.numpts);
+        initialize_th(th);
+        plan_th->execute(FFT_FORWARD);
+        projectFTvelocity_th(*thFT, *viFT, 1.0 / (double) sim.numpts / (double) sim.numpts);
+        cout << "compute theta done! \n";
         plan_vi->execute(FFT_BACKWARD);
+        plan_th->execute(FFT_BACKWARD);
+        cout << "end theta \n";
         vi->updateHalo();       // v initialized  
+        th->updateHalo();       // th initialized
+        cout << "compute_wi start 0 \n";
+
+        projection_init(wi);
+        cout << "compute_wi start 1 \n"; 
+        compute_vi_project_1(wi, source, 1., Bi, phi, chi);
+        plan_wi->execute(FFT_FORWARD);
+        projectFTvelocity_wi(*wiFT, *wiFT, 1.0 / (double) sim.numpts / (double) sim.numpts);                         
+        plan_wi->execute(FFT_BACKWARD);
+        wi->updateHalo();       // w initialized
+
 
 	projection_init(Sij);
 	projection_Tij_project(pcls_cdm, Sij, a, phi);
