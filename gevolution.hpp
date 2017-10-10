@@ -432,9 +432,9 @@ void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coe
 
   for (; k.test(); k.next())
     {
-      wiFT(k, 0) =   Cplx(0., 1.)*(viFT(k, 1)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(1)])* coeff;
-      wiFT(k, 1) = - Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(0)])* coeff;
-      wiFT(k, 2) =   Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(1)] - viFT(k, 1)*kshift[k.coord(0)])* coeff;
+      wiFT(k, 0) = - Cplx(0., 1.)*(viFT(k, 1)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(1)]);
+      wiFT(k, 1) = + Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(2)] - viFT(k, 2)*kshift[k.coord(0)]);
+      wiFT(k, 2) = - Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(1)] - viFT(k, 1)*kshift[k.coord(0)]);
     }
 
   free(gridk2);
@@ -484,7 +484,7 @@ void projectFTvelocity_th(Field<Cplx> & thFT, Field<Cplx> & viFT, const Real coe
 
   for (; k.test(); k.next())
     {
-     thFT(k) = -Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(0)] + viFT(k, 1)*kshift[k.coord(1)] + viFT(k, 2)*kshift[k.coord(2)])* coeff;
+     thFT(k) = -Cplx(0., 1.)*(viFT(k, 0)*kshift[k.coord(0)] + viFT(k, 1)*kshift[k.coord(1)] + viFT(k, 2)*kshift[k.coord(2)]);
      //cout << "theta_k  " << thFT(k) << "\n";
     }
 

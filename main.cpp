@@ -616,8 +616,8 @@ int main(int argc, char **argv)
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
-		        projectFTvelocity_wi(wiFT, viFT, dx*dx);      // compute the vorticity field 
-			projectFTvelocity_th(thFT, viFT, dx*dx);      // compute the div_vi field
+		        projectFTvelocity_wi(wiFT, viFT, 1.0);      // compute the vorticity field 
+			projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field
 
                         //for (kFT.first(); kFT.test(); kFT.next())
                         //  {cout << "test viFT 1 " << viFT(kFT) << "\n";
