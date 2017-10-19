@@ -215,7 +215,7 @@ int main(int argc, char **argv)
         Field<Cplx> viFT;
         Field<Cplx> wiFT;
         Field<Cplx> thFT; 	
-
+	
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
@@ -241,15 +241,11 @@ int main(int argc, char **argv)
 
 #ifdef CHECK_B
 	Field<Real> Bi_check;
-        Field<Real> vi_check;
 	Field<Cplx> BiFT_check;
-        Field<Cplx> viFT_check;
 	Bi_check.initialize(lat,3);
-        vi_check.initialize(lat,3);
 	BiFT_check.initialize(latFT,3);
-        viFT_check.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi_check(&Bi_check, &BiFT_check);
-        PlanFFT<Cplx> plan_vi_check(&vi_check, &viFT_check);
+
 #endif
 
 	update_cdm_fields[0] = &phi;
@@ -266,28 +262,18 @@ int main(int argc, char **argv)
         
 	Site x(lat);
 	rKSite kFT(latFT);
+
+	//     cout << "loop 1 \n";
+        //for (kFT.first(); kFT.test(); kFT.next()) cout << "k1" << kFT << "\n";
+
+        //cout <<"loop 2 \n";
+        //kFT.first();
+        //for (; kFT.test(); kFT.next()) cout << "k2" << kFT << "\n"; 
+  
 	
         //projection_init(&NORM_smooth);
 	dx = 1.0 / (double) sim.numpts;
 	numpts3d = (long) sim.numpts * (long) sim.numpts * (long) sim.numpts;
-
-        //sigma smoothing                                                                                                                 
-	/*
-        Real NORM_smooth[sim.numpts][sim.numpts][sim.numpts]= {0.};
-        Real sigma_smooth = 0.1*dx;
-        Site y(lat);
-        for (x.first(); x.test(); x.next())
-          { //cout << "x0 " << x.coord(0) << "y0 " << x.coord(1) << "z0 " << x.coord(2)<< "\n";                                  
-            for (y.first(); y.test(); y.next()){
-              cout << "Computing some shit \n";
-              NORM_smooth[x.coord(0)][x.coord(1)][x.coord(2)] += exp(-(
-								       pow(x.coord(0)-y.coord(0),2) +
-								       pow(x.coord(1)-y.coord(1),2) +
-								       pow(x.coord(2)-y.coord(2),2)
-								       ) /(2.*pow(sigma_smooth,2))   );
-            }
-          }	
-	 */
 
 	for (i = 0; i < 3; i++) // particles may never move farther than to the adjacent domain
 	{
@@ -309,7 +295,7 @@ int main(int argc, char **argv)
 	dtau_old = 0.;
 	
 	if (ic.generator == ICGEN_BASIC)
-	  generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &vi, &wi, &th, &scalarFT, &BiFT, &SijFT, &viFT, &wiFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_vi, &plan_wi, &plan_th); // generates ICs on the fly
+	  generateIC_basic(sim, ic, cosmo, fourpiG, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij); // generates ICs on the fly
 	else if (ic.generator == ICGEN_READ_FROM_DISK)
 		readIC(sim, ic, cosmo, fourpiG, a, tau, dtau, dtau_old, &pcls_cdm, &pcls_b, pcls_ncdm, maxvel, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, cycle, snapcount, pkcount, restartcount);
 #ifdef ICGEN_PREVOLUTION
@@ -353,17 +339,6 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#ifdef CHECK_v
-        if (sim.vector_flag == VECTOR_ELLIPTIC)
-	  {
-	    for (kFT.first(); kFT.test(); kFT.next())
-	      {
-		viFT_check(kFT, 0) = viFT(kFT, 0);
-		viFT_check(kFT, 1) = viFT(kFT, 1);
-		viFT_check(kFT, 2) = viFT(kFT, 2);
-	      }
-	  }
-#endif
 	
 	for (i = 0; i < 6; i++)
 	{
@@ -460,14 +435,17 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
-                if (sim.vector_flag == VECTOR_ELLIPTIC)
+                if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
  
 		  { projection_init(&vi);
                     projection_init(&wi);
                     projection_init(&th);
-                    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);                                
-                    compute_vi_project_1(&wi, &source, 1., &Bi, &phi, &chi);
-                    initialize_th(&th);
+                    //projection_Ti0_project(&pcls_cdm, &vi, &phi);
+                    //projection_Ti0_comm(&vi);
+                    //compute_vi_project_2(&vi, &source, &vi, 1.);  
+		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);                                
+                    //                    compute_vi_project_2(&wi, &source, 1., &Bi, &phi, &chi);
+                    //                    initialize_th(&th);
                   }  
 
                   
@@ -607,21 +585,27 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif
 			plan_Bi.execute(FFT_FORWARD);
-                        plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
-                        //for (kFT.first(); kFT.test(); kFT.next())
-			//  {cout << "test viFT 0 " << viFT(kFT) << "\n";
-			//  }
+
+                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
+			  {
+                           plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
+                           plan_th.execute(FFT_FORWARD);
+                           plan_wi.execute(FFT_FORWARD);
+                           for (kFT.first(); kFT.test(); kFT.next()) 
+			     {cout  << "test viFT " << viFT(kFT, 0) << " " << viFT(kFT, 0) << " " << viFT(kFT, 2) << "\n";}
+			  }
+			
+			
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
+                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
 		        projectFTvelocity_wi(wiFT, viFT, 1.0);      // compute the vorticity field 
 			projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field
+                        }
 
-                        //for (kFT.first(); kFT.test(); kFT.next())
-                        //  {cout << "test viFT 1 " << viFT(kFT) << "\n";
-                        //  }
 #ifdef CHECK_B
 			evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
 #endif
@@ -635,15 +619,19 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif				
 			plan_Bi.execute(FFT_BACKWARD);  // go back to position space
-                        plan_vi.execute(FFT_BACKWARD); 
+                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
+                        plan_vi.execute(FFT_BACKWARD);
+                        plan_wi.execute(FFT_BACKWARD);
+                        plan_th.execute(FFT_BACKWARD); 
+			}
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count += 3;
 #endif
  			Bi.updateHalo();  // communicate halo values
-                        vi.updateHalo(); 
-                        wi.updateHalo();
-                        th.updateHalo();
+                        //vi.updateHalo(); 
+                        //wi.updateHalo();
+                        //th.updateHalo();
 		}
 
 #ifdef BENCHMARK 

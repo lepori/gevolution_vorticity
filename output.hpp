@@ -418,7 +418,7 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
 	int * occupation;
 
 	kbin = (Real *) malloc(sim.numbins * sizeof(Real));
-	power = (Real *) malloc(sim.numbins * sizeof(Real));
+        power = (Real *) malloc(sim.numbins * sizeof(Real));
 	kscatter = (Real *) malloc(sim.numbins * sizeof(Real));
 	pscatter = (Real *) malloc(sim.numbins * sizeof(Real));
 	occupation = (int *) malloc(sim.numbins * sizeof(int));
@@ -759,21 +759,15 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
 		  {
                     extractPowerSpectrum(*viFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
 		    sprintf(filename, "%s%s%03d_vi.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI*Hconf(a, fourpiG, cosmo)*Hconf(a, fourpiG, cosmo)*pow(Omega_m(a, cosmo), 8./7.), filename, "power spectrum of vi", a);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI* cosmo.Omega_m * cosmo.Omega_m, filename, "power spectrum of vi", a);
                     extractPowerSpectrum(*wiFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
                     sprintf(filename, "%s%s%03d_wi.dat", sim.output_path, sim.basename_pk, pkcount);
-                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI*Hconf(a, fourpiG, cosmo)*Hconf(a, fourpiG, cosmo)*pow(Omega_m(a, cosmo), 8./7.), filename, "power spectrum of wi", a);
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI* cosmo.Omega_m * cosmo.Omega_m, filename, "power spectrum of wi", a);
                     extractPowerSpectrum(*thFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
                     sprintf(filename, "%s%s%03d_th.dat", sim.output_path, sim.basename_pk, pkcount);
-                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI*Hconf(a, fourpiG, cosmo)*Hconf(a, fourpiG, cosmo)*pow(Omega_m(a, cosmo), 8./7.), filename, "power spectrum of th", a);  
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI * cosmo.Omega_m * cosmo.Omega_m, filename, "power spectrum of th", a);  
 
 
-
-#ifdef CHECK_B		    
-		    extractPowerSpectrum(*viFT_check, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
-		    sprintf(filename, "%s%s%03d_vi_check.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a* 2. * M_PI * M_PI, filename, "power spectrum of vi", a);
-#endif
 		  }
 
 	
