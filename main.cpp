@@ -440,12 +440,7 @@ int main(int argc, char **argv)
 		  { projection_init(&vi);
                     projection_init(&wi);
                     projection_init(&th);
-                    //projection_Ti0_project(&pcls_cdm, &vi, &phi);
-                    //projection_Ti0_comm(&vi);
-                    //compute_vi_project_2(&vi, &source, &vi, 1.);  
 		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);                                
-                    //                    compute_vi_project_2(&wi, &source, 1., &Bi, &phi, &chi);
-                    //                    initialize_th(&th);
                   }  
 
                   
