@@ -154,7 +154,7 @@ void extractCrossSpectrum(Field<Cplx> & fld1FT, Field<Cplx> & fld2FT, Real * kbi
 		
 		i = (int) floor((double) ((Real) numbins * sqrt(k2 / k2max)));
 		if (i < numbins) 
-		{
+		{       
 			kbin[i] += weight * sqrt(k2);
 			kscatter[i] += weight * k2;
 			power[i] += weight * p.real() * k2 * sqrt(k2) / s;

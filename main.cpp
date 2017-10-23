@@ -586,8 +586,8 @@ int main(int argc, char **argv)
                            plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
                            plan_th.execute(FFT_FORWARD);
                            plan_wi.execute(FFT_FORWARD);
-                           for (kFT.first(); kFT.test(); kFT.next()) 
-			     {cout  << "test viFT " << viFT(kFT, 0) << " " << viFT(kFT, 0) << " " << viFT(kFT, 2) << "\n";}
+                           //for (kFT.first(); kFT.test(); kFT.next()) 
+			   //  {cout  << "test viFT " << viFT(kFT, 0) << " " << viFT(kFT, 0) << " " << viFT(kFT, 2) << "\n";}
 			  }
 			
 			
