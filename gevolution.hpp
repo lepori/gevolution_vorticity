@@ -1395,7 +1395,7 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 
-void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
+void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL, Field<Real> * vi_past = NULL)
 {
 
   Real  localCubePhi[8];
@@ -1474,44 +1474,105 @@ void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double 
 	    
         }
 
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=0.;
+      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) (*vi)(xvi,0)=(*vi_past)(xvi,0);
       else (*vi)(xvi,0) = 2./a*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);
  
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,1)= 0.;
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) (*vi)(xvi,1)= (*vi_past)(xvi,1);
       else (*vi)(xvi,1) = 2./a*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);
 
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)=0.;
+      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) (*vi)(xvi,2)= (*vi_past)(xvi,2);
       else (*vi)(xvi,2) = 2./a*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);
       
-      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=0.;
+      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+0,1)=(*vi_past)(xvi+0,1);
       else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);
 
-      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;
+      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=(*vi_past)(xvi+0,2);
       else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);
 
-      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;
+      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=(*vi_past)(xvi+1,0);
       else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);
 
-      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=0.;
+      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+1,2)=(*vi_past)(xvi+1,2);
       else (*vi)(xvi+1,2)= 2./a*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);
 
-      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=0.;
+      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+2,0)=(*vi_past)(xvi+2,0);
       else (*vi)(xvi+2,0)= 2./a*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);
 
-      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=0.;
+      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) (*vi)(xvi+2,1)=(*vi_past)(xvi+2,1);
       else (*vi)(xvi+2,1)= 2./a*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);
 
-      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=0.;
+      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+1+2,0)=(*vi_past)(xvi+1+2,0);
       else (*vi)(xvi+1+2,0)= 2./a*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);
 
-      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)=0.;
+      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+2,1)= (*vi_past)(xvi+0+2,1);
       else (*vi)(xvi+0+2,1)= 2./a*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);
 
-      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=0.;
+      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) (*vi)(xvi+0+1,2)=(*vi_past)(xvi+0+1,2);
       else (*vi)(xvi+0+1,2)= 2./a*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);
 
     }
 }
+
+void store_vi(Field<Real> * vi_past, Field<Real> * vi = NULL)
+{
+  Site x(vi_past->lattice());
+  //Real zero = 2.E-300;
+  //Real exp_decay = 1.E-2;
+
+  for(x.first(); x.test(); x.next())
+    {
+      (*vi_past)(x,0) = (*vi)(x,0);
+      (*vi_past)(x,1) = (*vi)(x,1);
+      (*vi_past)(x,2) = (*vi)(x,2);
+      (*vi_past)(x+0,1) = (*vi)(x+0,1);
+      (*vi_past)(x+0,2) = (*vi)(x+0,2);
+      (*vi_past)(x+1,0) = (*vi)(x+1,0);
+      (*vi_past)(x+1,2) = (*vi)(x+1,2);
+      (*vi_past)(x+2,0) = (*vi)(x+2,0);
+      (*vi_past)(x+2,1) = (*vi)(x+2,1);
+      (*vi_past)(x+1+2,0) = (*vi)(x+1+2,0);
+      (*vi_past)(x+0+2,1) = (*vi)(x+0+2,1);
+      (*vi_past)(x+0+1,2) = (*vi)(x+0+1,2);
+    }
+
+}
+
+void store_T00(Field<Real> * source_past, Field<Real> * source = NULL)
+{
+  Site x(source_past->lattice());
+  Real zero = 2.E-300;  
+  Real exp_decay = 1.E-2;
+
+  for(x.first(); x.test(); x.next())
+    {
+      if ( (*source)(x) < zero)   (*source_past)(x) = (*source_past)(x)*exp_decay;
+      else (*source_past)(x) = (*source)(x); 
+ 
+      if ( (*source)(x+2) < zero)   (*source_past)(x+2) = (*source_past)(x+2)*exp_decay;
+      else (*source_past)(x+2) = (*source)(x+2);
+
+      if ( (*source)(x+1) < zero)   (*source_past)(x+1) = (*source_past)(x+1)*exp_decay;
+      else (*source_past)(x+1) = (*source)(x+1);
+
+      if ( (*source)(x+1+2) < zero)   (*source_past)(x+1+2) = (*source_past)(x+1+2)*exp_decay;
+      else (*source_past)(x+1+2) = (*source)(x+1+2);
+
+      if ( (*source)(x+0) < zero)   (*source_past)(x+0) = (*source_past)(x+0)*exp_decay;
+      else (*source_past)(x+0) = (*source)(x+0);
+
+      if ( (*source)(x+0+2) < zero)   (*source_past)(x+0+2) = (*source_past)(x+0+2)*exp_decay;
+      else (*source_past)(x+0+2) = (*source)(x+0+2);
+ 
+      if ( (*source)(x+0+1) < zero)   (*source_past)(x+0+1) = (*source_past)(x+0+1)*exp_decay;
+      else (*source_past)(x+0+1) = (*source)(x+0+1);
+
+      if ( (*source)(x+0+1+2) < zero)   (*source_past)(x+0+1+2) = (*source_past)(x+0+1+2)*exp_decay;
+      else (*source_past)(x+0+1+2) = (*source)(x+0+1+2);
+
+    }
+
+}
+
 
 void initialize_th(Field<Real> * th)
 {
@@ -1531,6 +1592,9 @@ void initialize_th(Field<Real> * th)
       
     }
 }
+
+
+
 
 
 

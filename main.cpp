@@ -203,26 +203,33 @@ int main(int argc, char **argv)
 
 	Field<Real> phi;
 	Field<Real> source;
+        Field<Real> source_past;
 	Field<Real> chi;
 	Field<Real> Sij;
 	Field<Real> Bi;
         Field<Real> vi;
+        Field<Real> vi_past;
         Field<Real> wi;
         Field<Real> th;
 	Field<Cplx> scalarFT;
+        Field<Cplx> scalar_pastFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
         Field<Cplx> viFT;
+        Field<Cplx> vi_pastFT;
         Field<Cplx> wiFT;
         Field<Cplx> thFT; 	
 	
 	source.initialize(lat,1);
+        source_past.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
         th.initialize(lat,1); 
 	scalarFT.initialize(latFT,1);
+        scalar_pastFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
+        PlanFFT<Cplx> plan_source_past(&source_past, &scalar_pastFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
@@ -230,13 +237,16 @@ int main(int argc, char **argv)
 	SijFT.initialize(latFT,3,3,symmetric);
 	PlanFFT<Cplx> plan_Sij(&Sij, &SijFT);
         vi.initialize(lat,3);
+        vi_past.initialize(lat,3);
         wi.initialize(lat,3);
 	Bi.initialize(lat,3);
         viFT.initialize(latFT,3);
+        vi_pastFT.initialize(latFT,3);
         wiFT.initialize(latFT,3);
 	BiFT.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi(&Bi, &BiFT);
         PlanFFT<Cplx> plan_vi(&vi, &viFT);
+        PlanFFT<Cplx> plan_vi_past(&vi_past, &vi_pastFT);
         PlanFFT<Cplx> plan_wi(&wi, &wiFT);
 
 #ifdef CHECK_B
@@ -421,6 +431,8 @@ int main(int argc, char **argv)
 		}
 		projection_T00_comm(&source);
 
+                
+
 		if (sim.vector_flag == VECTOR_ELLIPTIC)
 		  {     
 			projection_init(&Bi);
@@ -435,12 +447,19 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
-                if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
- 
+                //if (sim.vector_flag == VECTOR_ELLIPTIC)
+		//  {
+		//    store_T00(&source_past, &source);
+                //  }
+
+                //if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
+                if (sim.vector_flag == VECTOR_ELLIPTIC)
 		  { projection_init(&vi);
-                    projection_init(&wi);
+                    projection_init(&vi_past);
                     projection_init(&th);
-		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi);                                
+                    projection_init(&wi);
+		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
+                    store_vi(&vi_past, &vi);                               
                   }  
 
                   
