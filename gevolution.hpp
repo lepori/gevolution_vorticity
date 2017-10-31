@@ -1487,7 +1487,7 @@ void compute_vi_project_1(Field<Real> * vi, Field<Real> * source = NULL, double 
       else (*vi)(xvi+0,1) = 2./a*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);
 
       if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) (*vi)(xvi+0,2)=0.;
-      else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[0] + localCubeT00[1]);
+      else (*vi)(xvi+0,2) = 2./a*localEdgeTi0[9]/(localCubeT00[4] + localCubeT00[5]);
 
       if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) (*vi)(xvi+1,0)=0.;
       else (*vi)(xvi+1,0)= 2./a*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);
