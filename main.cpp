@@ -454,10 +454,7 @@ int main(int argc, char **argv)
 
                 //if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
                 if (sim.vector_flag == VECTOR_ELLIPTIC)
-		  { projection_init(&vi);
-                    projection_init(&vi_past);
-                    projection_init(&th);
-                    projection_init(&wi);
+		  { 
 		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
                     store_vi(&vi_past, &vi);                               
                   }  
@@ -601,7 +598,16 @@ int main(int argc, char **argv)
 			plan_Bi.execute(FFT_FORWARD);
 
                         if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
-			  {
+			  { /*COUT << "z = " << 1. / a - 1. << "\n";
+			    for (x.first(); x.test(); x.next()) {
+                              if (vi(x, 0) == 0){
+				cout << "zero along 0" << x << "  " << vi(x, 0) << "\n";}
+			      if (vi(x, 1) == 0){
+                                cout << "zero along 1" << x << "  " << vi(x, 1) << "\n";}
+			      if (vi(x, 2) == 0){
+                                cout << "zero along 2" << x << "  " << vi(x, 2) << "\n";} 
+				}*/
+                               
                            plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
                            plan_th.execute(FFT_FORWARD);
                            plan_wi.execute(FFT_FORWARD);
@@ -634,7 +640,7 @@ int main(int argc, char **argv)
 #endif				
 			plan_Bi.execute(FFT_BACKWARD);  // go back to position space
                         if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
-                        plan_vi.execute(FFT_BACKWARD);
+			plan_vi.execute(FFT_BACKWARD);
                         plan_wi.execute(FFT_BACKWARD);
                         plan_th.execute(FFT_BACKWARD); 
 			}
