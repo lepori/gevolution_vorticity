@@ -73,6 +73,11 @@
 #define VECTOR_PARABOLIC            0
 #define VECTOR_ELLIPTIC             1
 
+#define VEL_ZERO                    0
+#define VEL_PAST0                   1
+#define VEL_PAST1                   2
+
+
 // Physical constants
 #define C_PLANCK_LAW      4.48147e-7    // omega_g / (T_cmb [K])^4
 #define C_BOLTZMANN_CST   8.61733e-5    // Boltzmann constant [eV/K]
@@ -158,6 +163,7 @@ struct metadata
 	int baryon_flag;
 	int gr_flag;
 	int vector_flag;
+        int velocity_flag;
 	int radiation_flag;
 	int out_pk;
 	int out_snapshot;

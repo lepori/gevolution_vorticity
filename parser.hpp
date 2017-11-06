@@ -1060,6 +1060,31 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 		}
 	}
 	
+        if (parseParameter(params, numparam, "velocity method", par_string))
+	  {
+	    if (par_string[0] == 'z' || par_string[0] == 'Z')
+	      {
+		COUT << " velocity method set to: " << COLORTEXT_CYAN << "zero" << COLORTEXT_RESET << endl;
+		sim.velocity_flag = VEL_ZERO;
+	      }
+	    else if (par_string[0] == '0')
+	      {
+		COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past 0" << COLORTEXT_RESET << endl;
+		sim.velocity_flag = VEL_PAST0;
+	      }
+	    else if (par_string[0] == '1')
+              {
+                COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past 1" << COLORTEXT_RESET << endl;
+		sim.velocity_flag = VEL_PAST1;
+              }
+
+	    else
+	      {
+		COUT << COLORTEXT_RED << " error" << COLORTEXT_RESET << ": velocity method not supported!" << endl;
+		parallel.abortForce();
+	      }
+	  }
+
 	if (!parseParameter(params, numparam, "generic file base", sim.basename_generic))
 		sim.basename_generic[0] = '\0';
 	

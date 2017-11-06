@@ -447,19 +447,23 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
-                //if (sim.vector_flag == VECTOR_ELLIPTIC)
-		//  {
-		//    store_T00(&source_past, &source);
-                //  }
-
-                //if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
-                if (sim.vector_flag == VECTOR_ELLIPTIC)
+                if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST0)
 		  { 
-		    compute_vi_project_1(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
-                    store_vi(&vi_past, &vi);                               
+		    compute_vi_project_past0(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
+                    store_vi(&vi_past, 1., &vi);                               
                   }  
 
-                  
+		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST1)
+		  {
+                    compute_vi_project_past1(&vi, &source, a, &Bi, &phi, &chi, &vi_past);
+                    store_vi(&vi_past, a, &vi);
+                    COUT << "a " << a;
+                  }
+            
+                if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_ZERO && 1. / a < sim.z_pk[pkcount] + 1.)
+                  {
+                    compute_vi_project_0(&vi, &source, 1., &Bi, &phi, &chi);
+                  }
 
 		
 		projection_init(&Sij);
@@ -598,21 +602,10 @@ int main(int argc, char **argv)
 			plan_Bi.execute(FFT_FORWARD);
 
                         if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
-			  { /*COUT << "z = " << 1. / a - 1. << "\n";
-			    for (x.first(); x.test(); x.next()) {
-                              if (vi(x, 0) == 0){
-				cout << "zero along 0" << x << "  " << vi(x, 0) << "\n";}
-			      if (vi(x, 1) == 0){
-                                cout << "zero along 1" << x << "  " << vi(x, 1) << "\n";}
-			      if (vi(x, 2) == 0){
-                                cout << "zero along 2" << x << "  " << vi(x, 2) << "\n";} 
-				}*/
-                               
-                           plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
+			  { 
+			   plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
                            plan_th.execute(FFT_FORWARD);
                            plan_wi.execute(FFT_FORWARD);
-                           //for (kFT.first(); kFT.test(); kFT.next()) 
-			   //  {cout  << "test viFT " << viFT(kFT, 0) << " " << viFT(kFT, 0) << " " << viFT(kFT, 2) << "\n";}
 			  }
 			
 			
