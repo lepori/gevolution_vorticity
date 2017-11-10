@@ -427,7 +427,7 @@ void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coe
     }
 
 
-  
+  /*  
   k.first();
   if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)
     {
@@ -449,6 +449,22 @@ void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coe
       wiFT(k, 0) = kshift[k.coord(1)].conj()*tmp2 - kshift[k.coord(2)].conj()*tmp1;
       wiFT(k, 1) = -(kshift[k.coord(0)].conj()*tmp2 - kshift[k.coord(2)].conj()*tmp0);
       wiFT(k, 2) = kshift[k.coord(0)].conj()*tmp1 - kshift[k.coord(1)].conj()*tmp0;
+    }
+
+  */
+
+  k.first();                                                                                                                                
+  if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)                                                                                
+    {                                                                                                                                       
+      wiFT(k, 0) = Cplx(0.,0.);                                                                                                             
+      wiFT(k, 1) = Cplx(0.,0.);                                                                                                             
+      wiFT(k, 2) = Cplx(0.,0.);                                                                                                             
+      k.next();                                                                                                                             
+    }                                                                                                                                       
+  for (; k.test(); k.next())                                                                                                                
+    {                                                                                                                                             wiFT(k, 0) = kshift[k.coord(1)].conj()*viFT(k, 2) - kshift[k.coord(2)].conj()*viFT(k, 1);                                             
+      wiFT(k, 1) = -(kshift[k.coord(0)].conj()*viFT(k, 2) - kshift[k.coord(2)].conj()*viFT(k, 0));                                      
+      wiFT(k, 2) = kshift[k.coord(0)].conj()*viFT(k, 1) - kshift[k.coord(1)].conj()*viFT(k, 0);                                     
     }
 
   free(gridk2);
@@ -1148,7 +1164,7 @@ void projection_T0i_project(Particles<part,part_info,part_dataType> * pcls, Fiel
 	double mass = coeff / (dx*dx*dx);
 	mass *= *(double*)((char*)pcls->parts_info() + pcls->mass_offset());
 
-    Real w;
+        Real w;
 	Real * q;
 	size_t offset_q = offsetof(part,vel);
 	
@@ -1761,7 +1777,6 @@ void store_vi(Field<Real> * vi_past, double a = 1., Field<Real> * vi = NULL)
       (*vi_past)(x+0+2,1) = (*vi)(x+0+2,1)*a*a*a;
       (*vi_past)(x+0+1,2) = (*vi)(x+0+1,2)*a*a*a;
     }
-
 }
 
 void store_T00(Field<Real> * source_past, Field<Real> * source = NULL)
@@ -2044,3 +2059,49 @@ void compute_vi_project_2(Field<Real> * vi, Field<Real> * source = NULL, Field<R
 
  }
 
+template<typename part, typename part_info, typename part_dataType>
+void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, int part_in_cube[], int count)
+{
+	
+  typename std::list<part>::iterator it;
+  Site xPart(pcls->lattice());
+  long cube_index[3];
+  Real dx = pcls->res();
+  long temp_index=0;
+  
+  //  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++) part_in_cube[i] = 0;
+
+  char filename[100];
+  sprintf(filename, "output/output_count_%03d.dat", count);
+  FILE *data=fopen(filename, "w");
+
+  int ii = 0;	
+
+  for(xPart.first(); xPart.test(); xPart.next())
+    {
+
+      for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
+      {
+        //cout << "iterator " << (*it) << "\n";
+        cout << "index " << ii << "\n";
+        for(int i = 0; i < 3; i++)
+	{ 
+	  cube_index[i] = (int)((*it).pos[i]*Ngrid);
+ 	}
+
+        temp_index =  cube_index[0] + Ngrid * ( cube_index[1] + Ngrid *  cube_index[2]);
+        part_in_cube[temp_index] += 1;
+        ++ii;
+      }
+    }
+
+  //  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++) parallel.sum<Real>(part_in_cube[i]);
+
+  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++)
+    {
+      fprintf(data, "%ld %d\n", i, part_in_cube[i]);
+    }
+  fclose(data);
+
+
+}
