@@ -24,6 +24,12 @@
 #ifndef GEVOLUTION_HEADER
 #define GEVOLUTION_HEADER
 
+#include <gsl/gsl_spline.h>
+
+#ifndef MAX_LINESIZE
+#define MAX_LINESIZE 2048
+#endif
+
 #ifndef Cplx
 #define Cplx Imag
 #endif
@@ -400,24 +406,316 @@ void projectFTvector(Field<Cplx> & SiFT, Field<Cplx> & BiFT, const Real coeff = 
 //   viFT       reference to the Fourier image of the velocity                                                                  
 //   wiFT       reference to the Fourier image of the vorticity field (can be identical to input)                           
 // Returns:                                                                                                                       
-//                                                                                                                                 //////////////////////////                                                                                                                
-
-void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coeff = 1.)
+//                                                                                                                                 //////////////////////////                                                                                                               
+void loadTransferFunctions_vel(const char * filename, gsl_spline * & tk_psi, gsl_spline * & tk_theta, const char * qname, const double boxsize, const double h)
 {
+  int i = 0, numpoints = 0;
+  double * k;
+  double * tk_p;
+  double * tk_t;
 
-  const int linesize = wiFT.lattice().size(1);
-  int i;
+  if (parallel.grid_rank()[0] == 0) // read file
+    {
+      FILE * tkfile;
+      char line[MAX_LINESIZE];
+      char format[MAX_LINESIZE];
+      char * ptr;
+      double dummy[3];
+      int kcol = -1, dcol = -1, tcol = -1, colmax;
+      
+      line[MAX_LINESIZE-1] = 0;
+      
+      tkfile = fopen(filename, "r");
+      
+      if (tkfile == NULL)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Unable to open file " << filename << "." << endl;
+	  parallel.abortForce();
+	}
+      
+      while (!feof(tkfile) && !ferror(tkfile))
+	{
+	  fgets(line, MAX_LINESIZE, tkfile);
+	  if (line[MAX_LINESIZE-1] != 0)
+	    {
+	      cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Character limit (" << (MAX_LINESIZE-1) << "/line) exceeded in file " << filename << "." << endl;
+	      fclose(tkfile);
+	      parallel.abortForce();
+	    }
+	  
+	  if (line[0] != '#' && !feof(tkfile) && !ferror(tkfile)) numpoints++;
+	}
+      
+      if (numpoints < 2)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! No valid data found in file " << filename << "." << endl;
+	  fclose(tkfile);
+	  parallel.abortForce();
+	}
+      
+      k = (double *) malloc(sizeof(double) * numpoints);
+      tk_p = (double *) malloc(sizeof(double) * numpoints);
+      tk_t = (double *) malloc(sizeof(double) * numpoints);
+      
+      if (k == NULL || tk_p == NULL || tk_t == NULL)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Memory error." << endl;
+	  fclose(tkfile);
+	  parallel.abortForce();
+	}
+      
+      rewind(tkfile);
+      
+      while (!feof(tkfile) && !ferror(tkfile))
+	{
+	  fgets(line, MAX_LINESIZE, tkfile);
+	  for (ptr = line, i = 0; (ptr = strchr(ptr, ':')) != NULL; i++)
+	    {
+	      ptr++;
+	      if (*ptr == 'k') kcol = i;
+	      else if (*ptr == 'p')
+		{
+		  if (strncmp(ptr, "psi", strlen("psi")) == 0) dcol = i;
+		}
+	      else if (*ptr == 't')
+		{
+		  if (strncmp(ptr+2, qname, strlen(qname)) == 0) tcol = i;
+		}
+	    }
+	  
+	  if (kcol >= 0 && dcol >= 0 && tcol >= 0) break;
+	}
+      
+      if (kcol < 0 || dcol < 0 || tcol < 0)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Unable to identify requested columns!" << endl;
+	  fclose(tkfile);
+	  free(k);
+	  free(tk_p);
+	  free(tk_t);
+	  parallel.abortForce();
+	}
+      
+      colmax = i;
+      for (i = 0, ptr=format; i < colmax; i++)
+	{
+	  if (i == kcol || i == dcol || i == tcol)
+	    {
+	      strncpy(ptr, " %lf", 4);
+	      ptr += 4;
+	    }
+	  else
+	    {
+	      strncpy(ptr, " %*lf", 5);
+	      ptr += 5;
+	    }
+	}
+      *ptr = '\0';
+      
+      if (kcol < dcol && dcol < tcol)
+	{
+	  kcol = 0; dcol = 1; tcol = 2;
+	}
+      else if (kcol < tcol && tcol < dcol)
+	{
+	  kcol = 0; dcol = 2; tcol = 1;
+	}
+      else if (dcol < kcol && kcol < tcol)
+	{
+	  kcol = 1; dcol = 0; tcol = 2;
+	}
+      else if (dcol < tcol && tcol < kcol)
+	{
+	  kcol = 2; dcol = 0; tcol = 1;
+	}
+      else if (tcol < kcol && kcol < dcol)
+	{
+	  kcol = 1; dcol = 2; tcol = 0;
+	}
+      else if (tcol < dcol && dcol < kcol)
+	{
+	  kcol = 2; dcol = 1; tcol = 0;
+	}
+      else
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Inconsistent columns!" << endl;
+	  fclose(tkfile);
+	  free(k);
+	  free(tk_p);
+	  free(tk_t);
+	  parallel.abortForce();
+	}
+      
+      i = 0;
+      while (!feof(tkfile) && !ferror(tkfile))
+	{
+	  fgets(line, MAX_LINESIZE, tkfile);
+	  
+	  if (sscanf(line, format, dummy, dummy+1, dummy+2) == 3 && !feof(tkfile) && !ferror(tkfile))
+	    {
+	      if (dummy[kcol] < 0.)
+		{
+		  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Negative k-value encountered." << endl;
+		  free(k);
+		  free(tk_p);
+		  free(tk_t);
+		  fclose(tkfile);
+		  parallel.abortForce();
+		}
+	      
+	      if (i > 0)
+		{
+		  if (k[i-1] >= dummy[kcol] * boxsize)
+		    {
+		      cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! k-values are not strictly ordered." << endl;
+		      free(k);
+		      free(tk_p);
+		      free(tk_t);
+		      fclose(tkfile);
+		      parallel.abortForce();
+		    }
+		}
+	      
+	      k[i] = dummy[kcol] * boxsize;
+	      tk_p[i] = dummy[dcol];
+	      tk_t[i] = dummy[tcol] * boxsize / h;
+	      i++;
+	    }
+	}
+      
+      fclose(tkfile);
+      
+      if (i != numpoints)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! File may have changed or file pointer corrupted." << endl;
+	  free(k);
+	  free(tk_p);
+	  free(tk_t);
+	  parallel.abortForce();
+	}
+      
+      parallel.broadcast_dim0<int>(numpoints, 0);
+    }
+  else
+    {
+      parallel.broadcast_dim0<int>(numpoints, 0);
+      
+      if (numpoints < 2)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Communication error." << endl;
+	  parallel.abortForce();
+	}
+      
+      k = (double *) malloc(sizeof(double) * numpoints);
+      tk_p = (double *) malloc(sizeof(double) * numpoints);
+      tk_t = (double *) malloc(sizeof(double) * numpoints);
+      
+      if (k == NULL || tk_p == NULL || tk_t == NULL)
+	{
+	  cerr << " proc#" << parallel.rank() << ": error in loadTransferFunctions! Memory error." << endl;
+	  parallel.abortForce();
+	}
+    }
+  
+  parallel.broadcast_dim0<double>(k, numpoints, 0);
+  parallel.broadcast_dim0<double>(tk_p, numpoints, 0);
+  parallel.broadcast_dim0<double>(tk_t, numpoints, 0);
+  
+  tk_psi = gsl_spline_alloc(gsl_interp_cspline, numpoints);
+  tk_theta = gsl_spline_alloc(gsl_interp_cspline, numpoints);
+  
+  gsl_spline_init(tk_psi, k, tk_p, numpoints);
+  gsl_spline_init(tk_theta, k, tk_t, numpoints);
+  
+  free(k);
+  free(tk_p);
+  free(tk_t);
+}
+
+
+void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> & scalarFT, int Ngrid, Real h, int count = 1, Real a = 1.)
+{  
+
+  const int linesize = viFT.lattice().size(1);
+  rKSite k(viFT.lattice());  
+
+  gsl_spline*tk_psi;
+  gsl_spline*tk_theta;
+
+  gsl_interp_accel*tk_psi_accel = gsl_interp_accel_alloc();
+  gsl_interp_accel*tk_theta_accel = gsl_interp_accel_alloc();
+
   Real * gridk2;
   Cplx * kshift;
-  rKSite k(wiFT.lattice());
   Real k2;
-  Cplx tmp(0., 0.);
-  Cplx tmp0(0., 0.);
-  Cplx tmp1(0., 0.);
-  Cplx tmp2(0., 0.);
+  Real k_mod;
+
+  char filename[100];  
+  sprintf(filename, "output/Transfer_gevolution/test_z%d_tk.dat", count);
+  loadTransferFunctions_vel(filename, tk_psi, tk_theta, "cdm", Ngrid, h);
 
   gridk2 = (Real *) malloc(linesize * sizeof(Real));
   kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
+
+  for (int i = 0; i < linesize; i++)
+    {
+      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      kshift[i] = gridk2[i] * Cplx(cos(M_PI * (Real) i / (Real) linesize), -sin(M_PI * (Real) i / (Real) linesize));
+      gridk2[i] *= gridk2[i];
+    }
+
+  COUT << "I am in function now! \n"; 
+  for (k.first(); k.test(); k.next())
+    {
+      k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
+      k_mod = sqrt(k2);
+      cout << "vel_nl " << viFT(k, 0); 
+      viFT_sub(k, 0) = viFT(k, 0) 
+	- Cplx(0.0, 1.0)*kshift[k.coord(0)]
+        *Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
+        *scalarFT(k);
+      viFT_sub(k, 1) = viFT(k, 1)
+        - Cplx(0.0, 1.0)*a*kshift[k.coord(1)]/k2
+	*Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
+        *scalarFT(k);
+      viFT_sub(k, 2) = viFT(k, 2)
+        - Cplx(0.0, 1.0)*a*kshift[k.coord(2)]/k2
+        *Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
+        *scalarFT(k);
+      
+      cout << "  vel_sub " << viFT_sub(k, 0);
+      cout << " i*a " << a  << "\n";
+      cout << " i*a*kshift " << a*kshift[k.coord(0)]  << "\n";
+      cout << " i*a*kshift " << a*kshift[k.coord(0)]  << "\n";
+      cout << " i*a*kshift/k2 " << a*kshift[k.coord(0)]/k2  << "\n";
+      cout << " i*a*kshift/k2*spline1 " << a*kshift[k.coord(0)]/k2
+                *gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)  << "\n";
+      cout << " i*a*kshift/k2*spline1/spline2 " << a*kshift[k.coord(0)]/k2
+	*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel)  << "\n";
+      cout << " i*a*kshift/k2*spline1/spline2*scalar " << a*kshift[k.coord(0)]/k2
+	*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel)*scalarFT(k)  << "\n";
+
+    } 
+ 
+  free(gridk2);
+  free(kshift);
+ 
+}
+
+void projectFTvelocity_vR(Field<Cplx> & vRFT, Field<Cplx> & viFT, const Real coeff = 1.)
+{
+
+  const int linesize = vRFT.lattice().size(1);
+  int i;
+  Real * gridk2;
+  Cplx * kshift;
+  rKSite k(vRFT.lattice());
+  Real k2;
+  Cplx tmp(0., 0.);
+
+  gridk2 = (Real *) malloc(linesize * sizeof(Real));
+  kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
+
 
   for (i = 0; i < linesize; i++)
     {
@@ -427,13 +725,12 @@ void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coe
     }
 
 
-  /*  
   k.first();
   if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)
     {
-      wiFT(k, 0) = Cplx(0.,0.);
-      wiFT(k, 1) = Cplx(0.,0.);
-      wiFT(k, 2) = Cplx(0.,0.);
+      vRFT(k, 0) = Cplx(0.,0.);
+      vRFT(k, 1) = Cplx(0.,0.);
+      vRFT(k, 2) = Cplx(0.,0.);
       k.next();
     }
   for (; k.test(); k.next())
@@ -442,30 +739,11 @@ void projectFTvelocity_wi(Field<Cplx> & wiFT, Field<Cplx> & viFT, const Real coe
 
       tmp = (kshift[k.coord(0)] * viFT(k, 0) + kshift[k.coord(1)] * viFT(k, 1) + kshift[k.coord(2)] * viFT(k, 2)) / k2;
 
-      tmp0 = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp) * coeff;
-      tmp1 = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp) * coeff;
-      tmp2 = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp) * coeff;
-
-      wiFT(k, 0) = kshift[k.coord(1)].conj()*tmp2 - kshift[k.coord(2)].conj()*tmp1;
-      wiFT(k, 1) = -(kshift[k.coord(0)].conj()*tmp2 - kshift[k.coord(2)].conj()*tmp0);
-      wiFT(k, 2) = kshift[k.coord(0)].conj()*tmp1 - kshift[k.coord(1)].conj()*tmp0;
+      vRFT(k, 0) = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp); 
+      vRFT(k, 1) = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp);
+      vRFT(k, 2) = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp);
     }
 
-  */
-
-  k.first();                                                                                                                                
-  if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)                                                                                
-    {                                                                                                                                       
-      wiFT(k, 0) = Cplx(0.,0.);                                                                                                             
-      wiFT(k, 1) = Cplx(0.,0.);                                                                                                             
-      wiFT(k, 2) = Cplx(0.,0.);                                                                                                             
-      k.next();                                                                                                                             
-    }                                                                                                                                       
-  for (; k.test(); k.next())                                                                                                                
-    {                                                                                                                                             wiFT(k, 0) = kshift[k.coord(1)].conj()*viFT(k, 2) - kshift[k.coord(2)].conj()*viFT(k, 1);                                             
-      wiFT(k, 1) = -(kshift[k.coord(0)].conj()*viFT(k, 2) - kshift[k.coord(2)].conj()*viFT(k, 0));                                      
-      wiFT(k, 2) = kshift[k.coord(0)].conj()*viFT(k, 1) - kshift[k.coord(1)].conj()*viFT(k, 0);                                     
-    }
 
   free(gridk2);
   free(kshift);
@@ -2060,48 +2338,28 @@ void compute_vi_project_2(Field<Real> * vi, Field<Real> * source = NULL, Field<R
  }
 
 template<typename part, typename part_info, typename part_dataType>
-void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, int part_in_cube[], int count)
+void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, Field<Real> * part_in_cube = NULL, int count = 1)
 {
 	
   typename std::list<part>::iterator it;
   Site xPart(pcls->lattice());
-  long cube_index[3];
-  Real dx = pcls->res();
-  long temp_index=0;
-  
-  //  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++) part_in_cube[i] = 0;
+  Site xField(part_in_cube->lattice());
+  int n_empty_size = 0;
+  //  char filename[100];
+  //  sprintf(filename, "output/output_count_%03d.dat", count);
+  //  FILE *data=fopen(filename, "w");
 
-  char filename[100];
-  sprintf(filename, "output/output_count_%03d.dat", count);
-  FILE *data=fopen(filename, "w");
 
-  int ii = 0;	
-
-  for(xPart.first(); xPart.test(); xPart.next())
+  for(xField.first(); xField.test(); xField.next())
     {
-
-      for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
-      {
-        //cout << "iterator " << (*it) << "\n";
-        cout << "index " << ii << "\n";
-        for(int i = 0; i < 3; i++)
-	{ 
-	  cube_index[i] = (int)((*it).pos[i]*Ngrid);
- 	}
-
-        temp_index =  cube_index[0] + Ngrid * ( cube_index[1] + Ngrid *  cube_index[2]);
-        part_in_cube[temp_index] += 1;
-        ++ii;
-      }
+      (*part_in_cube)(xField) = 0.;
     }
 
-  //  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++) parallel.sum<Real>(part_in_cube[i]);
-
-  for (long i = 0; i < Ngrid*Ngrid*Ngrid; i++)
+  for(xPart.first(), xField.first(); xPart.test(); xPart.next(), xField.next())
     {
-      fprintf(data, "%ld %d\n", i, part_in_cube[i]);
+      (*part_in_cube)(xField) = (pcls->field())(xPart).size ;
+      if ((pcls->field())(xPart).size == 0) n_empty_size++;
     }
-  fclose(data);
-
+ 
 
 }

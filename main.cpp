@@ -33,6 +33,9 @@
 //////////////////////////
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #ifdef HAVE_CLASS
 #include "class.h"
 #undef MAX			// due to macro collision this has to be done BEFORE including LATfield2 headers!
@@ -91,6 +94,7 @@ int main(int argc, char **argv)
 	int io_group_size = 0;
 	
 	int i, j, cycle = 0, snapcount = 0, pkcount = 0, restartcount = 0, usedparams, numparam = 0, numsteps, numspecies;
+        int particles_counter = 1;
 	int numsteps_ncdm[MAX_PCL_SPECIES-2];
 	long numpts3d;
 	int box[3];
@@ -106,6 +110,9 @@ int main(int argc, char **argv)
 	icsettings ic;
 	gadget2_header hdr;
 	Real T00hom;
+        Real sigma0;
+        Real tot_count;
+        Real N_empty;
 
 #ifndef H5_DEBUG
 	H5Eset_auto2 (H5E_DEFAULT, NULL, NULL);
@@ -168,6 +175,8 @@ int main(int argc, char **argv)
 	
 	usedparams = parseMetadata(params, numparam, sim, cosmo, ic);
 	
+        parseOutputPath(sim.output_path);
+
 	COUT << " parsing of settings file completed. " << numparam << " parameters found, " << usedparams << " were used." << endl;
 	
 	sprintf(filename, "%s%s_settings_used.ini", sim.output_path, sim.basename_generic);
@@ -204,50 +213,57 @@ int main(int argc, char **argv)
 	Field<Real> phi;
 	Field<Real> source;
         Field<Real> source_past;
+        Field<Real> count_part;
+
 	Field<Real> chi;
 	Field<Real> Sij;
 	Field<Real> Bi;
         Field<Real> vi;
         Field<Real> vi_past;
-        Field<Real> wi;
+        Field<Real> vR;
         Field<Real> th;
 	Field<Cplx> scalarFT;
         Field<Cplx> scalar_pastFT;
+        Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
         Field<Cplx> viFT;
         Field<Cplx> vi_pastFT;
-        Field<Cplx> wiFT;
+        Field<Cplx> vRFT;
         Field<Cplx> thFT; 	
-	
+
+
 	source.initialize(lat,1);
         source_past.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
-        th.initialize(lat,1); 
+        th.initialize(lat,1);
+        count_part.initialize(lat,1);
 	scalarFT.initialize(latFT,1);
         scalar_pastFT.initialize(latFT,1);
+        count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
         PlanFFT<Cplx> plan_source_past(&source_past, &scalar_pastFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
+        PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
 	PlanFFT<Cplx> plan_Sij(&Sij, &SijFT);
         vi.initialize(lat,3);
         vi_past.initialize(lat,3);
-        wi.initialize(lat,3);
+        vR.initialize(lat,3);
 	Bi.initialize(lat,3);
         viFT.initialize(latFT,3);
         vi_pastFT.initialize(latFT,3);
-        wiFT.initialize(latFT,3);
+        vRFT.initialize(latFT,3);
 	BiFT.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi(&Bi, &BiFT);
         PlanFFT<Cplx> plan_vi(&vi, &viFT);
         PlanFFT<Cplx> plan_vi_past(&vi_past, &vi_pastFT);
-        PlanFFT<Cplx> plan_wi(&wi, &wiFT);
+        PlanFFT<Cplx> plan_vR(&vR, &vRFT);
 
 #ifdef CHECK_B
 	Field<Real> Bi_check;
@@ -285,6 +301,8 @@ int main(int argc, char **argv)
 	dx = 1.0 / (double) sim.numpts;
 	numpts3d = (long) sim.numpts * (long) sim.numpts * (long) sim.numpts;
 
+	//        int count_part[numpts3d];
+       
 	for (i = 0; i < 3; i++) // particles may never move farther than to the adjacent domain
 	{
 		if (lat.sizeLocal(i)-1 < sim.movelimit)
@@ -395,6 +413,8 @@ int main(int argc, char **argv)
 #ifdef BENCHMARK		
 		cycle_start_time = MPI_Wtime();
 #endif
+
+                //for (long i = 0; i < (long) sim.numpts*(long) sim.numpts*(long) sim.numpts; i++) count_part[i] = 0; 
 		// construct stress-energy tensor
 		projection_init(&source);
 #ifdef HAVE_CLASS
@@ -457,13 +477,24 @@ int main(int argc, char **argv)
 		  {
                     compute_vi_project_past1(&vi, &source, a, &Bi, &phi, &chi, &vi_past);
                     store_vi(&vi_past, a, &vi);
-                    COUT << "a " << a;
-                  }
+                    //COUT << "a " << a;
+                  } 
             
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_ZERO && 1. / a < sim.z_pk[pkcount] + 1.)
                   {
                     compute_vi_project_0(&vi, &source, 1., &Bi, &phi, &chi);
+		    // func(&pcls_cdm, count_part)
                   }
+
+                /*
+                if (sim.vector_flag == VECTOR_ELLIPTIC && 1. / a < sim.z_pk[pkcount] + 1.)
+		  {
+		    //                    for (x.first(); x.test(); x.next()) {count_part(x) = 0.0;}
+		      compute_count(&pcls_cdm,(long) sim.numpts, &count_part, particles_counter);
+                      ++ particles_counter;
+                  } 
+		*/
+
 
 		
 		projection_init(&Sij);
@@ -485,14 +516,32 @@ int main(int argc, char **argv)
 		if (sim.gr_flag > 0)
 		{	
 			T00hom = 0.;
+                        sigma0 = 0.;
+			//                        tot_count = 0.;
+                        //N_empty = 0.;
 			for (x.first(); x.test(); x.next())
-				T00hom += source(x);
+			  {T00hom += source(x);
+			   sigma0 += (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.; 
+			   // tot_count += count_part(x);
+			   //if (count_part(x) < 0.01) N_empty += 1.0; 
+			   //
+                           }
 			parallel.sum<Real>(T00hom);
+                        parallel.sum<Real>(sigma0);
+                        //parallel.sum<Real>(tot_count);
+                        //parallel.sum<Real>(N_empty); 
 			T00hom /= (Real) numpts3d;
-			
+                        sigma0 /= (Real) numpts3d;
+                        //tot_count /= numpts3d;
+                        //N_empty /= numpts3d;                                  
+ 		       
 			if (cycle % CYCLE_INFO_INTERVAL == 0)
 			{
-				COUT << " cycle " << cycle << ", background information: z = " << (1./a) - 1. << ", average T00 = " << T00hom << ", background model = " << cosmo.Omega_cdm + cosmo.Omega_b + bg_ncdm(a, cosmo) << endl;
+			  COUT << " cycle " << cycle << ", background information: z = " << (1./a) - 1. << ", average T00 = " << T00hom 
+                               <<", AVERAGE sigma_0 = " << sigma0 << ", background model = " 
+                               << cosmo.Omega_cdm + cosmo.Omega_b + bg_ncdm(a, cosmo) << endl;
+
+
 			}
 			
 			if (dtau_old > 0.)
@@ -534,7 +583,8 @@ int main(int argc, char **argv)
 
 #ifdef BENCHMARK
 			ref2_time= MPI_Wtime();
-#endif		
+#endif
+		
 			plan_phi.execute(FFT_BACKWARD);	 // go back to position space
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
@@ -543,6 +593,26 @@ int main(int argc, char **argv)
 		}
 
 		phi.updateHalo();  // communicate halo values
+
+
+		if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)              
+		  {
+		    //plan_phi.execute(FFT_FORWARD);
+		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                                 
+		    plan_th.execute(FFT_FORWARD);
+		    plan_vR.execute(FFT_FORWARD);
+		    //COUT << "I am before subtract_vel \n";
+		    //subtract_velocity(viFT, viFT, scalarFT, (long) sim.numpts, cosmo.h, particles_counter, a);
+		    //plan_phi.execute(FFT_BACKWARD);
+		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                             
+		    projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field                                
+		    //++ particles_counter;
+		    plan_vi.execute(FFT_BACKWARD);
+		    plan_vR.execute(FFT_BACKWARD);
+		    plan_th.execute(FFT_BACKWARD);
+         
+		  }
+
 
 		// record some background data
 		if (kFT.setCoord(0, 0, 0))
@@ -556,8 +626,15 @@ int main(int argc, char **argv)
 			else
 			{
 				if (cycle == 0)
-					fprintf(outfile, "# background statistics\n# cycle   tau/boxsize    a             conformal H/H0  phi(k=0)       T00(k=0)\n");
-				fprintf(outfile, " %6d   %e   %e   %e   %e   %e\n", cycle, tau, a, Hconf(a, fourpiG, cosmo) / Hconf(1., fourpiG, cosmo), scalarFT(kFT).real(), T00hom);
+					fprintf(outfile, "# background statistics\n# cycle   tau/boxsize    a             conformal H/H0  phi(k=0)       T00(k=0)       sigma_0\n");
+				fprintf(outfile, " %6d   %e   %e   %e   %e   %e  %e\n", 
+					cycle, 
+					tau, 
+					a, 
+					Hconf(a, fourpiG, cosmo) / Hconf(1., fourpiG, cosmo), 
+					scalarFT(kFT).real(), 
+					T00hom, 
+					sigma0);
 				fclose(outfile);
 			}
 		}
@@ -600,13 +677,6 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif
 			plan_Bi.execute(FFT_FORWARD);
-
-                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)
-			  { 
-			   plan_vi.execute(FFT_FORWARD); //FFT for the velocity field
-                           plan_th.execute(FFT_FORWARD);
-                           plan_wi.execute(FFT_FORWARD);
-			  }
 			
 			
 #ifdef BENCHMARK
@@ -614,10 +684,12 @@ int main(int argc, char **argv)
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
-                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
+			/*if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
+			  //subtract_velocity(viFT, viFT, scalarFT, (long) sim.numpts, cosmo.h, particles_counter);
 		        projectFTvelocity_wi(wiFT, viFT, 1.0);      // compute the vorticity field 
 			projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field
-                        }
+                        ++ particles_counter;
+                        }*/
 
 #ifdef CHECK_B
 			evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
@@ -632,11 +704,11 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif				
 			plan_Bi.execute(FFT_BACKWARD);  // go back to position space
-                        if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
-			plan_vi.execute(FFT_BACKWARD);
-                        plan_wi.execute(FFT_BACKWARD);
-                        plan_th.execute(FFT_BACKWARD); 
-			}
+			//if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
+			//plan_vi.execute(FFT_BACKWARD);
+                        //plan_wi.execute(FFT_BACKWARD);
+                        //plan_th.execute(FFT_BACKWARD); 
+			//}
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count += 3;
@@ -677,9 +749,9 @@ int main(int argc, char **argv)
 			COUT << COLORTEXT_CYAN << " writing power spectra" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B			
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &wi,&wiFT, &plan_wi, &th, &thFT, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR,&vRFT, &plan_vR, &th, &thFT, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
 #else
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &wi, &wiFT, &plan_wi, &th,&thFT, &plan_th);
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR, &vRFT, &plan_vR, &th,&thFT, &plan_th);
 #endif
 
 			pkcount++;

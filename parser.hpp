@@ -1398,4 +1398,55 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 	return usedparams;
 }
 
+
+//////////////////////////
+// parseOutputPath
+//////////////////////////
+// Description:
+//   creates the directories for the output path; if the path already exists, it does nothing
+//   if last character of path is not '/' in the settings file, it will be appended to it
+//
+// Arguments:
+//   path      path to the directory for the output files
+//
+// Returns:
+//   'false' if path exists, 'true' if it doesn't
+//
+//////////////////////////
+
+bool parseOutputPath(char *path)
+{
+  char temp_output[PARAM_MAX_LENGTH] = {0};
+  struct stat temp_status = {0};
+  char *current_dir;
+  char temp_path[PARAM_MAX_LENGTH];
+  strcpy(temp_path, path);
+
+  if (stat(path, &temp_status) == 0)
+    {
+      if (path[strlen(path)-1] != '/') strcat(path, "/");
+      return false;
+    }
+  else
+    {
+      if (path[0] == '/')
+	strcat(temp_output, "/");
+
+      current_dir = strtok(temp_path, "/");
+      while (current_dir != NULL)
+        {
+	  strcat(temp_output, current_dir);
+	  if (stat(temp_output, &temp_status) == -1)
+            {
+	      if (mkdir(temp_output, 0700) != 0)
+		return false;
+            }
+	  strcat(temp_output, "/");
+	  current_dir = strtok(NULL, "/");
+        }
+    }
+  strcpy(path, temp_output);
+  return true;
+}
+
 #endif
