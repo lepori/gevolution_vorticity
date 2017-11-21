@@ -1038,6 +1038,7 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 	sim.Cf = 1.;
 	sim.steplimit = 1.;
 	sim.boxsize = -1.;
+        sim.sigma = 1.E-10;
 	sim.wallclocklimit = -1.;
 	sim.z_in = 0.;
 
@@ -1067,15 +1068,15 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 		COUT << " velocity method set to: " << COLORTEXT_CYAN << "zero" << COLORTEXT_RESET << endl;
 		sim.velocity_flag = VEL_ZERO;
 	      }
-	    else if (par_string[0] == '0')
+	    else if (par_string[0] == 'p')
 	      {
 		COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past 0" << COLORTEXT_RESET << endl;
-		sim.velocity_flag = VEL_PAST0;
+		sim.velocity_flag = VEL_PAST;
 	      }
-	    else if (par_string[0] == '1')
+	    else if (par_string[0] == 's')
               {
-                COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past 1" << COLORTEXT_RESET << endl;
-		sim.velocity_flag = VEL_PAST1;
+                COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel smoothed" << COLORTEXT_RESET << endl;
+		sim.velocity_flag = VEL_SMOOTH;
               }
 
 	    else
@@ -1102,6 +1103,8 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 		
 	if (!parseParameter(params, numparam, "hibernation file base", sim.basename_restart))
 		strcpy(sim.basename_restart, "restart");
+
+	parseParameter(params, numparam, "sigma_smooth", sim.sigma);
 		
 	parseParameter(params, numparam, "boxsize", sim.boxsize);
 	if (sim.boxsize <= 0. || !isfinite(sim.boxsize))

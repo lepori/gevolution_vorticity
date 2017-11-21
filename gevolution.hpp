@@ -633,7 +633,7 @@ void loadTransferFunctions_vel(const char * filename, gsl_spline * & tk_psi, gsl
 }
 
 
-void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> & scalarFT, int Ngrid, Real h, int count = 1, Real a = 1.)
+void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &thFT, int Ngrid, Real h, int count = 1, Real a = 1.)
 {  
 
   const int linesize = viFT.lattice().size(1);
@@ -682,19 +682,6 @@ void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &
         - Cplx(0.0, 1.0)*a*kshift[k.coord(2)]/k2
         *Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
         *scalarFT(k);
-      
-      cout << "  vel_sub " << viFT_sub(k, 0);
-      cout << " i*a " << a  << "\n";
-      cout << " i*a*kshift " << a*kshift[k.coord(0)]  << "\n";
-      cout << " i*a*kshift " << a*kshift[k.coord(0)]  << "\n";
-      cout << " i*a*kshift/k2 " << a*kshift[k.coord(0)]/k2  << "\n";
-      cout << " i*a*kshift/k2*spline1 " << a*kshift[k.coord(0)]/k2
-                *gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)  << "\n";
-      cout << " i*a*kshift/k2*spline1/spline2 " << a*kshift[k.coord(0)]/k2
-	*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel)  << "\n";
-      cout << " i*a*kshift/k2*spline1/spline2*scalar " << a*kshift[k.coord(0)]/k2
-	*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel)*scalarFT(k)  << "\n";
-
     } 
  
   free(gridk2);
@@ -2362,4 +2349,72 @@ void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, F
     }
  
 
+}
+
+
+
+void compute_Ti0(Field<Real> * Ti0, Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
+{
+
+  Real  localEdgeTi0[12];  
+
+  Site x(Ti0->lattice());
+      
+  for(x.first(); x.test(); x.next())
+    {  
+      if (Bi != NULL && phi != NULL && chi != NULL)
+        {
+      
+	  (*Ti0)(x,0) = (*Bi)(x,0)*(1. + 2.*((*phi)(x) + (*phi)(x+0)) + (*chi)(x) + (*chi)(x+0));
+	  (*Ti0)(x,1) = (*Bi)(x,1)*(1. + 2.*((*phi)(x) + (*phi)(x+1)) + (*chi)(x) + (*chi)(x+1));
+	  (*Ti0)(x,2) = (*Bi)(x,2)*(1. + 2.*((*phi)(x) + (*phi)(x+2)) + (*chi)(x) + (*chi)(x+2));
+
+        }
+    }
+}
+
+void covolve_field(Field<Cplx> * fieldFT_conv, Field<Cplx> * fieldFT, int dim_field, Real sigma) 
+{
+
+        rKSite k(fieldFT->lattice());
+
+	const int linesize = fieldFT->lattice().size(1);
+	int i;
+	Real * gridk2;
+	Real k2;
+	
+	gridk2 = (Real *) malloc(linesize * sizeof(Real));
+	
+	for (i = 0; i < linesize; i++)
+	{
+		gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+		gridk2[i] *= gridk2[i];
+	}
+	
+	
+	for (k.first(); k.test(); k.next())
+	{
+		k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
+		for (i = 0; i < dim_field; i++){
+		  (*fieldFT_conv)(k, i) = (*fieldFT)(k, i)*exp(-0.5*k2*sigma*sigma); 
+		}
+	}
+	
+	free(gridk2);
+
+}
+
+
+
+void compute_velocity_smooth(Field<Real> * vi, Field<Real> * Ti0 = NULL, Field<Real> * T00 = NULL)
+{
+
+  Site xvi(vi->lattice());
+      
+  for(xvi.first(); xvi.test(); xvi.next())
+    {  
+      (*vi)(xvi,0) = 2.*(*Ti0)(xvi,0)/((*T00)(xvi) + (*T00)(xvi+0));
+      (*vi)(xvi,1) = 2.*(*Ti0)(xvi,1)/((*T00)(xvi) + (*T00)(xvi+1));
+      (*vi)(xvi,2) = 2.*(*Ti0)(xvi,2)/((*T00)(xvi) + (*T00)(xvi+2));
+    }
 }

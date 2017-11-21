@@ -74,8 +74,8 @@
 #define VECTOR_ELLIPTIC             1
 
 #define VEL_ZERO                    0
-#define VEL_PAST0                   1
-#define VEL_PAST1                   2
+#define VEL_PAST                    1
+#define VEL_SMOOTH                  2
 
 
 // Physical constants
@@ -176,6 +176,7 @@ struct metadata
 	double steplimit;
 	double boxsize;
 	double wallclocklimit;
+        double sigma;
 	double z_in;
 	double z_snapshot[MAX_OUTPUTS];
 	double z_pk[MAX_OUTPUTS];

@@ -216,19 +216,23 @@ int main(int argc, char **argv)
         Field<Real> count_part;
 
 	Field<Real> chi;
+        Field<Real> T00;
 	Field<Real> Sij;
 	Field<Real> Bi;
+        Field<Real> Ti0;
         Field<Real> vi;
         Field<Real> vi_past;
         Field<Real> vR;
         Field<Real> th;
 	Field<Cplx> scalarFT;
         Field<Cplx> scalar_pastFT;
+	Field<Cplx> T00FT;
         Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
         Field<Cplx> viFT;
         Field<Cplx> vi_pastFT;
+        Field<Cplx> Ti0FT;
         Field<Cplx> vRFT;
         Field<Cplx> thFT; 	
 
@@ -238,16 +242,19 @@ int main(int argc, char **argv)
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
         th.initialize(lat,1);
+        T00.initialize(lat,1);
         count_part.initialize(lat,1);
 	scalarFT.initialize(latFT,1);
         scalar_pastFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
+        T00FT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
         PlanFFT<Cplx> plan_source_past(&source_past, &scalar_pastFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
+	PlanFFT<Cplx> plan_T00(&T00, &T00FT);
         PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
@@ -255,16 +262,19 @@ int main(int argc, char **argv)
         vi.initialize(lat,3);
         vi_past.initialize(lat,3);
         vR.initialize(lat,3);
+        Ti0.initialize(lat,3);
 	Bi.initialize(lat,3);
         viFT.initialize(latFT,3);
         vi_pastFT.initialize(latFT,3);
+        Ti0FT.initialize(latFT,3);
         vRFT.initialize(latFT,3);
 	BiFT.initialize(latFT,3);
 	PlanFFT<Cplx> plan_Bi(&Bi, &BiFT);
         PlanFFT<Cplx> plan_vi(&vi, &viFT);
         PlanFFT<Cplx> plan_vi_past(&vi_past, &vi_pastFT);
         PlanFFT<Cplx> plan_vR(&vR, &vRFT);
-
+        PlanFFT<Cplx> plan_Ti0(&Ti0, &Ti0FT);
+  
 #ifdef CHECK_B
 	Field<Real> Bi_check;
 	Field<Cplx> BiFT_check;
@@ -467,23 +477,27 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
-                if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST0)
+                if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST)
 		  { 
 		    compute_vi_project_past0(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
                     store_vi(&vi_past, 1., &vi);                               
                   }  
 
-		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST1)
+		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_SMOOTH && 1. / a < sim.z_pk[pkcount] + 1.)
 		  {
-                    compute_vi_project_past1(&vi, &source, a, &Bi, &phi, &chi, &vi_past);
-                    store_vi(&vi_past, a, &vi);
-                    //COUT << "a " << a;
+                    compute_Ti0(&Ti0, &Bi, &phi, &chi);
+		    plan_Ti0.execute(FFT_FORWARD);
+                    plan_source.execute(FFT_FORWARD);
+                    covolve_field(&Ti0FT, &Ti0FT, 3, sim.sigma);
+                    covolve_field(&T00FT, &scalarFT, 1, sim.sigma);
+                    plan_Ti0.execute(FFT_BACKWARD);
+                    plan_T00.execute(FFT_BACKWARD);
+                    compute_velocity_smooth(&vi,&Ti0,&T00);
                   } 
             
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_ZERO && 1. / a < sim.z_pk[pkcount] + 1.)
                   {
                     compute_vi_project_0(&vi, &source, 1., &Bi, &phi, &chi);
-		    // func(&pcls_cdm, count_part)
                   }
 
                 /*
@@ -517,23 +531,14 @@ int main(int argc, char **argv)
 		{	
 			T00hom = 0.;
                         sigma0 = 0.;
-			//                        tot_count = 0.;
-                        //N_empty = 0.;
 			for (x.first(); x.test(); x.next())
 			  {T00hom += source(x);
 			   sigma0 += (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.; 
-			   // tot_count += count_part(x);
-			   //if (count_part(x) < 0.01) N_empty += 1.0; 
-			   //
                            }
 			parallel.sum<Real>(T00hom);
                         parallel.sum<Real>(sigma0);
-                        //parallel.sum<Real>(tot_count);
-                        //parallel.sum<Real>(N_empty); 
 			T00hom /= (Real) numpts3d;
                         sigma0 /= (Real) numpts3d;
-                        //tot_count /= numpts3d;
-                        //N_empty /= numpts3d;                                  
  		       
 			if (cycle % CYCLE_INFO_INTERVAL == 0)
 			{
