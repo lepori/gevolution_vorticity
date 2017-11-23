@@ -24,7 +24,11 @@
 #ifndef GEVOLUTION_HEADER
 #define GEVOLUTION_HEADER
 
+#include "prng_engine.hpp"
 #include <gsl/gsl_spline.h>
+
+using namespace std;
+using namespace LATfield2;
 
 #ifndef MAX_LINESIZE
 #define MAX_LINESIZE 2048
@@ -37,6 +41,10 @@
 using namespace std;
 using namespace LATfield2;
 
+// should be larger than maximum Ngrid                                                                                    
+#ifndef HUGE_SKIP
+#define HUGE_SKIP   65536
+#endif
 
 //////////////////////////
 // prepareFTsource (1)
@@ -632,18 +640,360 @@ void loadTransferFunctions_vel(const char * filename, gsl_spline * & tk_psi, gsl
   free(tk_t);
 }
 
+#ifdef FFT3D
 
-void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &thFT, int Ngrid, Real h, int count = 1, Real a = 1.)
+//////////////////////////
+// generateDisplacementField (generateRealization)
+//////////////////////////
+// Description:
+//   generates particle displacement field
+//
+// Non-type template parameters:
+//   ignorekernel  this is effectively an optimization flag defaulted to 0; instantiating with 1 instead will cause
+//                 the function to ignore the convolution kernel, allowing the function to be used for generating
+//                 realizations (generateRealization is simply an alias for generateDisplacementField<1>)
+// 
+// Arguments:
+//   potFT         reference to allocated field that contains the convolution kernel relating the potential
+//                 (generating the displacement field) with the bare density perturbation; will contain the
+//                 Fourier image of the potential generating the displacement field
+//   coeff         gauge correction coefficient "H_conformal^2"
+//   pkspline      pointer to a gsl_spline which holds a tabulated power spectrum
+//   seed          initial seed for random number generator
+//   ksphere       flag to indicate that only a sphere in k-space should be initialized
+//                 (default = 0: full k-space cube is initialized)
+//   deconvolve_f  flag to indicate deconvolution function
+//                 0: no deconvolution
+//                 1: sinc (default)
+//
+// Returns:
+// 
+//////////////////////////
+
+#ifndef generateReal
+#define generateReal generateRealization_vel<1>
+#endif
+
+template<int ignorekernel = 1>
+void generateRealization_vel(Field<Cplx> & potFT, const Real coeff, const gsl_spline * pkspline, const unsigned int seed, const int ksphere = 0, const int deconvolve_f = 1)
+{
+	const int linesize = potFT.lattice().size(1);
+	const int kmax = (linesize / 2) - 1;
+	rKSite k(potFT.lattice());
+	int kx, ky, kz, i, j;
+	int kymin, kymax, kzmin, kzmax;
+	long jumpy, jumpz;
+	float r1, r2, k2, s;
+	float * sinc;
+	sitmo::prng_engine prng;
+	uint64_t huge_skip = HUGE_SKIP;
+	gsl_interp_accel * acc = gsl_interp_accel_alloc();
+	
+	sinc = (float *) malloc(linesize * sizeof(float));
+	
+	sinc[0] = 1.;
+	if (deconvolve_f == 1)
+	{
+		for (i = 1; i < linesize; i++)
+			sinc[i] = sin(M_PI * (float) i / (float) linesize) * (float) linesize / (M_PI * (float) i);
+	}
+	else
+	{
+		for (i = 1; i < linesize; i++)
+			sinc[i] = 1.;
+	}
+	
+	k.initialize(potFT.lattice(), potFT.lattice().siteLast());
+	kymax = k.coord(1);
+	kzmax = k.coord(2);
+	k.initialize(potFT.lattice(), potFT.lattice().siteFirst());
+	kymin = k.coord(1);
+	kzmin = k.coord(2);
+		
+	if (kymin < (linesize / 2) + 1 && kzmin < (linesize / 2) + 1)
+	{
+		prng.seed(seed);
+		   
+		if (kymin == 0 && kzmin == 0)
+		{
+			k.setCoord(0, 0, 0);
+			potFT(k) = Cplx(0.,0.);
+			kx = 1;
+		}
+		else
+		{
+			kx = 0;
+			prng.discard(((uint64_t) kzmin * huge_skip + (uint64_t) kymin) * huge_skip); 
+		}
+		
+		for (kz = kzmin; kz < (linesize / 2) + 1 && kz <= kzmax; kz++)
+		{
+			for (ky = kymin, j = 0; ky < (linesize / 2) + 1 && ky <= kymax; ky++, j++)
+			{
+				for (i = 0; kx < (linesize / 2) + 1; kx++)
+				{
+					k.setCoord(kx, ky, kz);
+					
+					k2 = (float) (kx * kx) + (float) (ky * ky) + (float) (kz * kz);
+					
+					if (kx >= kmax || ky >= kmax || kz >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+					{
+						potFT(k) = Cplx(0., 0.);
+					}
+					else
+					{
+						s = sinc[kx] * sinc[ky] * sinc[kz];
+						k2 *= 4. * M_PI * M_PI;
+						do
+						{
+							r1 = (float) prng() / (float) sitmo::prng_engine::max();
+							i++;
+						}
+						while (r1 == 0.);
+						r2 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+					
+						potFT(k) = (ignorekernel ? Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+					}
+				}
+				prng.discard(huge_skip - (uint64_t) i);
+				kx = 0;
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+	}
+	
+	if (kymax >= (linesize / 2) + 1 && kzmin < (linesize / 2) + 1)
+	{
+		prng.seed(seed);
+		prng.discard(((huge_skip + (uint64_t) kzmin) * huge_skip + (uint64_t) (linesize - kymax)) * huge_skip);
+		
+		for (kz = kzmin; kz < (linesize / 2) + 1 && kz <= kzmax; kz++)
+		{
+			for (ky = kymax, j = 0; ky >= (linesize / 2) + 1 && ky >= kymin; ky--, j++)
+			{
+				for (kx = 0, i = 0; kx < (linesize / 2) + 1; kx++)
+				{
+					k.setCoord(kx, ky, kz);
+										
+					k2 = (float) (kx * kx) + (float) ((linesize-ky) * (linesize-ky)) + (float) (kz * kz);
+					
+					if (kx >= kmax || (linesize-ky) >= kmax || kz >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+					{
+						potFT(k) = Cplx(0., 0.);
+					}
+					else
+					{
+						s = sinc[kx] * sinc[linesize-ky] * sinc[kz];
+						k2 *= 4. * M_PI * M_PI;
+						do
+						{
+							r1 = (float) prng() / (float) sitmo::prng_engine::max();
+							i++;
+						}
+						while (r1 == 0.);
+						r2 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+						
+						potFT(k) = (ignorekernel ? Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+					}
+				}
+				prng.discard(huge_skip - (uint64_t) i);
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+	}
+	
+	if (kymin < (linesize / 2) + 1 && kzmax >= (linesize / 2) + 1)
+	{
+		prng.seed(seed);
+		prng.discard(((huge_skip + huge_skip + (uint64_t) (linesize - kzmax)) * huge_skip + (uint64_t) kymin) * huge_skip);
+		
+		for (kz = kzmax; kz >= (linesize / 2) + 1 && kz >= kzmin; kz--)
+		{
+			for (ky = kymin, j = 0; ky < (linesize / 2) + 1 && ky <= kymax; ky++, j++)
+			{
+				for (kx = 1, i = 0; kx < (linesize / 2) + 1; kx++)
+				{
+					k.setCoord(kx, ky, kz);
+					
+					k2 = (float) (kx * kx) + (float) (ky * ky) + (float) ((linesize-kz) * (linesize-kz));
+					
+					if (kx >= kmax || ky >= kmax || (linesize-kz) >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+					{
+						potFT(k) = Cplx(0., 0.);
+					}
+					else
+					{
+						s = sinc[kx] * sinc[ky] * sinc[linesize-kz];
+						k2 *= 4. * M_PI * M_PI;
+						do
+						{
+							r1 = (float) prng() / (float) sitmo::prng_engine::max();
+							i++;
+						}
+						while (r1 == 0.);
+						r2 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+					
+						potFT(k) = (ignorekernel ? Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+					}
+				}
+				prng.discard(huge_skip - (uint64_t) i);
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+		
+		prng.seed(seed);
+		prng.discard(((uint64_t) (linesize - kzmax) * huge_skip + (uint64_t) kymin) * huge_skip);
+		kx = 0;
+		
+		for (kz = kzmax; kz >= (linesize / 2) + 1 && kz >= kzmin; kz--)
+		{
+			for (ky = kymin, j = 0; ky < (linesize / 2) + 1 && ky <= kymax; ky++, j++)
+			{
+				k.setCoord(kx, ky, kz);
+					
+				k2 = (float) (ky * ky) + (float) ((linesize-kz) * (linesize-kz));
+				i = 0;
+				
+				if (ky >= kmax || (linesize-kz) >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+				{
+					potFT(k) = Cplx(0., 0.);
+				}
+				else
+				{
+					s = sinc[ky] * sinc[linesize-kz];
+					k2 *= 4. * M_PI * M_PI;
+					do
+					{
+						r1 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+					}
+					while (r1 == 0.);
+					r2 = (float) prng() / (float) sitmo::prng_engine::max();
+					i++;
+				
+					potFT(k) = (ignorekernel? Cplx(cos(2. * M_PI * r2), -sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), -sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+				}
+								
+				prng.discard(huge_skip - (uint64_t) i);
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+	}
+	
+	if (kymax >= (linesize / 2) + 1 && kzmax >= (linesize / 2) + 1)
+	{
+		prng.seed(seed);
+		prng.discard(((huge_skip + huge_skip + huge_skip + (uint64_t) (linesize - kzmax)) * huge_skip + (uint64_t) (linesize - kymax)) * huge_skip);
+		
+		for (kz = kzmax; kz >= (linesize / 2) + 1 && kz >= kzmin; kz--)
+		{
+			for (ky = kymax, j = 0; ky >= (linesize / 2) + 1 && ky >= kymin; ky--, j++)
+			{
+				for (kx = 1, i = 0; kx < (linesize / 2) + 1; kx++)
+				{
+					k.setCoord(kx, ky, kz);
+					
+					k2 = (float) (kx * kx) + (float) ((linesize-ky) * (linesize-ky)) + (float) ((linesize-kz) * (linesize-kz));
+					
+					if (kx >= kmax || (linesize-ky) >= kmax || (linesize-kz) >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+					{
+						potFT(k) = Cplx(0., 0.);
+					}
+					else
+					{
+						s = sinc[kx] * sinc[linesize-ky] * sinc[linesize-kz];
+						k2 *= 4. * M_PI * M_PI;
+						do
+						{
+							r1 = (float) prng() / (float) sitmo::prng_engine::max();
+							i++;
+						}
+						while (r1 == 0.);
+						r2 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+					
+						potFT(k) = (ignorekernel ? Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+					}
+				}
+				prng.discard(huge_skip - (uint64_t) i);
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+		
+		prng.seed(seed);
+		prng.discard(((huge_skip + huge_skip + (uint64_t) (linesize - kzmax)) * huge_skip + (uint64_t) (linesize - kymax)) * huge_skip);
+		kx = 0;
+		
+		for (kz = kzmax; kz >= (linesize / 2) + 1 && kz >= kzmin; kz--)
+		{
+			for (ky = kymax, j = 0; ky >= (linesize / 2) + 1 && ky >= kymin; ky--, j++)
+			{
+				k.setCoord(kx, ky, kz);
+					
+				k2 = (float) ((linesize-ky) * (linesize-ky)) + (float) ((linesize-kz) * (linesize-kz));
+				i = 0;
+				
+				if ((linesize-ky) >= kmax || (linesize-kz) >= kmax || (k2 >= kmax * kmax && ksphere > 0))
+				{
+					potFT(k) = Cplx(0., 0.);
+				}
+				else
+				{
+					s = sinc[linesize-ky] * sinc[linesize-kz];
+					k2 *= 4. * M_PI * M_PI;
+					do
+					{
+						r1 = (float) prng() / (float) sitmo::prng_engine::max();
+						i++;
+					}
+					while (r1 == 0.);
+					r2 = (float) prng() / (float) sitmo::prng_engine::max();
+					i++;
+				
+					potFT(k) = (ignorekernel ? Cplx(cos(2. * M_PI * r2), -sin(2. * M_PI * r2)) : Cplx(cos(2. * M_PI * r2), -sin(2. * M_PI * r2)) * (1. + 7.5 * coeff / k2) / potFT(k)) * sqrt(-2. * log(r1)) * gsl_spline_eval(pkspline, sqrt(k2), acc) * s;
+				}
+				
+				prng.discard(huge_skip - (uint64_t) i);
+			}
+			prng.discard(huge_skip * (huge_skip - (uint64_t) j));
+		}
+	}
+	
+	gsl_interp_accel_free(acc);
+	free(sinc);
+}
+
+#endif
+
+//  Compute primordial Pk in gevolution
+inline double Pk_primordial_gev(const double k, const icsettings & ic)
+{
+  return ic.A_s * pow(k / ic.k_pivot, ic.n_s - 1.);  // note that k_pivot is in units of inverse Mpc!                                  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
+                       Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> & thFT, 
+                       int Ngrid, Real h, int count = 1, Real a = 1.)
+                       
 {  
 
   const int linesize = viFT.lattice().size(1);
   rKSite k(viFT.lattice());  
 
-  gsl_spline*tk_psi;
-  gsl_spline*tk_theta;
+  gsl_spline*thspline = NULL;
+  gsl_spline*tk_psi    = NULL;
+  gsl_spline*tk_th_cdm = NULL;
+  gsl_spline*tk_th_b   = NULL;
+  double * temp = NULL;
+
 
   gsl_interp_accel*tk_psi_accel = gsl_interp_accel_alloc();
   gsl_interp_accel*tk_theta_accel = gsl_interp_accel_alloc();
+  
 
   Real * gridk2;
   Cplx * kshift;
@@ -652,7 +1002,33 @@ void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &
 
   char filename[100];  
   sprintf(filename, "output/Transfer_gevolution/test_z%d_tk.dat", count);
-  loadTransferFunctions_vel(filename, tk_psi, tk_theta, "cdm", Ngrid, h);
+  cout << "I am ready to load transfer! \n";
+  loadTransferFunctions_vel(filename, tk_psi, tk_th_cdm, "cdm", Ngrid, h);
+  cout << "Transfer loaded! \n";
+ 
+  
+  
+       
+  loadTransferFunctions_vel(filename, tk_psi, tk_th_b, "b", Ngrid, h);
+      
+  if (tk_th_cdm->size != tk_th_b->size)
+	{
+	  COUT << " error: baryon transfer function line number mismatch!"\
+	       << endl;
+	  parallel.abortForce();
+	}
+   
+  temp = (double *) malloc(tk_th_cdm->size * sizeof(double));
+  thspline = gsl_spline_alloc(gsl_interp_cspline, tk_th_cdm->size);
+
+  for (int i = 0; i < tk_th_cdm->size; i++)
+   {
+     cout << tk_th_cdm->y[i] << " " << tk_th_b->y[i] << "\n";      
+     temp[i] = -a * ((cosmo.Omega_cdm * tk_th_cdm->y[i] + cosmo.Omega_b* tk_th_b->y[i]) / 
+              (cosmo.Omega_cdm + cosmo.Omega_b))*M_PI
+              *sqrt(2.*Pk_primordial_gev(tk_th_cdm->x[i]*h/Ngrid, ic)/tk_th_cdm->x[i])/tk_th_cdm->x[i];
+   }
+
 
   gridk2 = (Real *) malloc(linesize * sizeof(Real));
   kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
@@ -664,24 +1040,23 @@ void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &
       gridk2[i] *= gridk2[i];
     }
 
-  COUT << "I am in function now! \n"; 
+  gsl_spline_init(thspline, tk_th_cdm->x, temp, tk_th_cdm->size);
+  generateReal(thFT, 0., thspline, (unsigned int) ic.seed, ic.flags & ICFLAG_KSPHERE, 0);
+ 
+
   for (k.first(); k.test(); k.next())
     {
       k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
       k_mod = sqrt(k2);
-      cout << "vel_nl " << viFT(k, 0); 
-      viFT_sub(k, 0) = viFT(k, 0) 
-	- Cplx(0.0, 1.0)*kshift[k.coord(0)]
-        *Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
-        *scalarFT(k);
-      viFT_sub(k, 1) = viFT(k, 1)
-        - Cplx(0.0, 1.0)*a*kshift[k.coord(1)]/k2
-	*Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
-        *scalarFT(k);
-      viFT_sub(k, 2) = viFT(k, 2)
-        - Cplx(0.0, 1.0)*a*kshift[k.coord(2)]/k2
-        *Cplx(a/k2*gsl_spline_eval(tk_theta, k_mod , tk_theta_accel)/gsl_spline_eval(tk_psi, k_mod , tk_psi_accel), 0.0)
-        *scalarFT(k);
+
+      //viFT_sub(k, 0) = Cplx(0.0, 1.0)*kshift[k.coord(0)]*a/k2*thFT(k);
+      //viFT_sub(k, 1) = Cplx(0.0, 1.0)*kshift[k.coord(1)]*a/k2*thFT(k);
+      //viFT_sub(k, 2) = Cplx(0.0, 1.0)*kshift[k.coord(2)]*a/k2*thFT(k);
+      //      cout << "viTF, coorection: " << viFT(k, 0) <<    
+      viFT_sub(k, 0) = viFT(k, 0) - Cplx(0.0, 1.0)*kshift[k.coord(0)]*a/k2*thFT(k);
+      viFT_sub(k, 1) = viFT(k, 1) - Cplx(0.0, 1.0)*kshift[k.coord(1)]*a/k2*thFT(k);
+      viFT_sub(k, 2) = viFT(k, 2) - Cplx(0.0, 1.0)*kshift[k.coord(2)]*a/k2*thFT(k);
+        
     } 
  
   free(gridk2);
@@ -1666,7 +2041,6 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #ifndef projection_Tij_comm
 #define projection_Tij_comm symtensorProjectionCICNGP_comm
 #endif
-
 #endif
 
 void compute_vi_project_0(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)

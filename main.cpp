@@ -113,6 +113,7 @@ int main(int argc, char **argv)
         Real sigma0;
         Real tot_count;
         Real N_empty;
+        int subvel_counter = 1;
 
 #ifndef H5_DEBUG
 	H5Eset_auto2 (H5E_DEFAULT, NULL, NULL);
@@ -598,20 +599,22 @@ int main(int argc, char **argv)
 		}
 
 		phi.updateHalo();  // communicate halo values
-
-
+ 
+                
 		if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)              
 		  {
 		    //plan_phi.execute(FFT_FORWARD);
-		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                                 
+		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                           
 		    plan_th.execute(FFT_FORWARD);
 		    plan_vR.execute(FFT_FORWARD);
-		    //COUT << "I am before subtract_vel \n";
-		    //subtract_velocity(viFT, viFT, scalarFT, (long) sim.numpts, cosmo.h, particles_counter, a);
-		    //plan_phi.execute(FFT_BACKWARD);
-		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                             
+		    //                    COUT << "I am before subtract_vel \n";
+                    //subtract_velocity(sim, ic, cosmo,
+		    //		      viFT, viFT, thFT,
+	            //		      (double) sim.numpts, cosmo.h, subvel_counter, a);
+		    // COUT << "I am after subtract_vel \n";
+		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                            
 		    projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field                                
-		    //++ particles_counter;
+		    ++ subvel_counter;
 		    plan_vi.execute(FFT_BACKWARD);
 		    plan_vR.execute(FFT_BACKWARD);
 		    plan_th.execute(FFT_BACKWARD);
