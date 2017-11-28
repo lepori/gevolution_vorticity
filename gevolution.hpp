@@ -632,7 +632,7 @@ void loadTransferFunctions_vel(const char * filename, gsl_spline * & tk_psi, gsl
   free(tk_t);
 }
 
-
+/*
 void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &thFT, int Ngrid, Real h, int count = 1, Real a = 1.)
 {  
 
@@ -688,6 +688,7 @@ void subtract_velocity(Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> &
   free(kshift);
  
 }
+*/
 
 void projectFTvelocity_vR(Field<Cplx> & vRFT, Field<Cplx> & viFT, const Real coeff = 1.)
 {
