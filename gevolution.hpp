@@ -977,7 +977,7 @@ inline double Pk_primordial_gev(const double k, const icsettings & ic)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
                        Field<Cplx> & viFT_sub, Field<Cplx> & viFT, Field<Cplx> & thFT, 
-                       int Ngrid, Real h, int count = 1, Real a = 1.)
+                       int count = 1, Real a = 1.)
                        
 {  
 
@@ -989,7 +989,7 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
   gsl_spline*tk_th_cdm = NULL;
   gsl_spline*tk_th_b   = NULL;
   double * temp = NULL;
-
+  long numpts3d = (long) sim.numpts * (long) sim.numpts * (long) sim.numpts;
 
   gsl_interp_accel*tk_psi_accel = gsl_interp_accel_alloc();
   gsl_interp_accel*tk_theta_accel = gsl_interp_accel_alloc();
@@ -1002,15 +1002,10 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
 
   char filename[100];  
   sprintf(filename, "output/Transfer_gevolution/test_z%d_tk.dat", count);
-  cout << "I am ready to load transfer! \n";
-  loadTransferFunctions_vel(filename, tk_psi, tk_th_cdm, "cdm", Ngrid, h);
-  cout << "Transfer loaded! \n";
- 
-  
-  
-       
-  loadTransferFunctions_vel(filename, tk_psi, tk_th_b, "b", Ngrid, h);
+  loadTransferFunctions_vel(filename, tk_psi, tk_th_cdm, "cdm", sim.boxsize, cosmo.h);
+  loadTransferFunctions_vel(filename, tk_psi, tk_th_b, "b", sim.boxsize, cosmo.h);
       
+  
   if (tk_th_cdm->size != tk_th_b->size)
 	{
 	  COUT << " error: baryon transfer function line number mismatch!"\
@@ -1024,9 +1019,9 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
   for (int i = 0; i < tk_th_cdm->size; i++)
    {
      cout << tk_th_cdm->y[i] << " " << tk_th_b->y[i] << "\n";      
-     temp[i] = -a * ((cosmo.Omega_cdm * tk_th_cdm->y[i] + cosmo.Omega_b* tk_th_b->y[i]) / 
+     temp[i] = -((cosmo.Omega_cdm * tk_th_cdm->y[i] + cosmo.Omega_b* tk_th_b->y[i]) / 
               (cosmo.Omega_cdm + cosmo.Omega_b))*M_PI
-              *sqrt(2.*Pk_primordial_gev(tk_th_cdm->x[i]*h/Ngrid, ic)/tk_th_cdm->x[i])/tk_th_cdm->x[i];
+              *sqrt(Pk_primordial_gev(tk_th_cdm->x[i]*cosmo.h/sim.boxsize, ic)/tk_th_cdm->x[i])/tk_th_cdm->x[i];
    }
 
 
@@ -1049,13 +1044,13 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
       k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
       k_mod = sqrt(k2);
 
-      //viFT_sub(k, 0) = Cplx(0.0, 1.0)*kshift[k.coord(0)]*a/k2*thFT(k);
-      //viFT_sub(k, 1) = Cplx(0.0, 1.0)*kshift[k.coord(1)]*a/k2*thFT(k);
-      //viFT_sub(k, 2) = Cplx(0.0, 1.0)*kshift[k.coord(2)]*a/k2*thFT(k);
+      //viFT_sub(k, 0) = a*Cplx(0.0, 1.0)*kshift[k.coord(0)]/k2*thFT(k)*numpts3d;
+      //viFT_sub(k, 1) = a*Cplx(0.0, 1.0)*kshift[k.coord(1)]/k2*thFT(k)*numpts3d;
+      //viFT_sub(k, 2) = a*Cplx(0.0, 1.0)*kshift[k.coord(2)]/k2*thFT(k)*numpts3d;
       //      cout << "viTF, coorection: " << viFT(k, 0) <<    
-      viFT_sub(k, 0) = viFT(k, 0) - Cplx(0.0, 1.0)*kshift[k.coord(0)]*a/k2*thFT(k);
-      viFT_sub(k, 1) = viFT(k, 1) - Cplx(0.0, 1.0)*kshift[k.coord(1)]*a/k2*thFT(k);
-      viFT_sub(k, 2) = viFT(k, 2) - Cplx(0.0, 1.0)*kshift[k.coord(2)]*a/k2*thFT(k);
+      viFT_sub(k, 0) = viFT(k, 0) + Cplx(0.0, 1.0)*kshift[k.coord(0)].conj()*a/k2*thFT(k)*numpts3d;
+      viFT_sub(k, 1) = viFT(k, 1) + Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
+      viFT_sub(k, 2) = viFT(k, 2) + Cplx(0.0, 1.0)*kshift[k.coord(2)].conj()*a/k2*thFT(k)*numpts3d;
         
     } 
  

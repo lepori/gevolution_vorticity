@@ -1086,6 +1086,22 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 	      }
 	  }
 
+        if (parseParameter(params, numparam, "subtract linear velocity", par_string))
+          {
+            if (par_string[0] == 's' || par_string[0] == 'S')
+              {
+                COUT << "Velocity = Velocity - (Velocity)_LINEAR " << COLORTEXT_CYAN << endl;
+                sim.subvel_flag = SUB_VEL;
+              }
+            else
+	      {
+		sim.subvel_flag = VEL_NL;
+	      }
+          }
+
+
+
+
 	if (!parseParameter(params, numparam, "generic file base", sim.basename_generic))
 		sim.basename_generic[0] = '\0';
 	

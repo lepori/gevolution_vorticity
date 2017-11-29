@@ -77,6 +77,8 @@
 #define VEL_PAST                    1
 #define VEL_SMOOTH                  2
 
+#define SUB_VEL                     0
+#define VEL_NL                      1
 
 // Physical constants
 #define C_PLANCK_LAW      4.48147e-7    // omega_g / (T_cmb [K])^4
@@ -164,6 +166,7 @@ struct metadata
 	int gr_flag;
 	int vector_flag;
         int velocity_flag;
+        int subvel_flag;
 	int radiation_flag;
 	int out_pk;
 	int out_snapshot;

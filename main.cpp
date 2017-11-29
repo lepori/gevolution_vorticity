@@ -607,11 +607,14 @@ int main(int argc, char **argv)
 		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                           
 		    plan_th.execute(FFT_FORWARD);
 		    plan_vR.execute(FFT_FORWARD);
-		    //                    COUT << "I am before subtract_vel \n";
-                    //subtract_velocity(sim, ic, cosmo,
-		    //		      viFT, viFT, thFT,
-	            //		      (double) sim.numpts, cosmo.h, subvel_counter, a);
-		    // COUT << "I am after subtract_vel \n";
+
+		    if(sim.subvel_flag == SUB_VEL)
+		      {
+                        subtract_velocity(sim, ic, cosmo,
+		    		          viFT, viFT, thFT,
+		    		          subvel_counter, a);
+                      }
+
 		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                            
 		    projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field                                
 		    ++ subvel_counter;
