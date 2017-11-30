@@ -1,4 +1,4 @@
-//////////////////////////
+/////////////////////////
 // Copyright (c) 2015-2016 Julian Adamek (Université de Genève)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	Real T00hom;
         Real sigma0;
         Real tot_count;
-        Real N_empty;
+        long Nempty;
         int subvel_counter = 1;
 
 #ifndef H5_DEBUG
@@ -478,6 +478,8 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
+		// Compute velocity field, 3 methods
+
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST)
 		  { 
 		    compute_vi_project_past0(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
@@ -501,17 +503,7 @@ int main(int argc, char **argv)
                     compute_vi_project_0(&vi, &source, 1., &Bi, &phi, &chi);
                   }
 
-                /*
-                if (sim.vector_flag == VECTOR_ELLIPTIC && 1. / a < sim.z_pk[pkcount] + 1.)
-		  {
-		    //                    for (x.first(); x.test(); x.next()) {count_part(x) = 0.0;}
-		      compute_count(&pcls_cdm,(long) sim.numpts, &count_part, particles_counter);
-                      ++ particles_counter;
-                  } 
-		*/
-
-
-		
+                
 		projection_init(&Sij);
 		projection_Tij_project(&pcls_cdm, &Sij, a, &phi);
 		if (sim.baryon_flag)
@@ -527,9 +519,12 @@ int main(int argc, char **argv)
 		projection_time += MPI_Wtime() - cycle_start_time;
 		ref_time = MPI_Wtime();
 #endif
-		
+
+		Nempty = 0;
 		if (sim.gr_flag > 0)
 		{	
+                        compute_count(&pcls_cdm, &Nempty, &count_part);
+                        COUT << "N_empty outside loop  " << Nempty << "\n";
 			T00hom = 0.;
                         sigma0 = 0.;
 			for (x.first(); x.test(); x.next())
@@ -544,7 +539,7 @@ int main(int argc, char **argv)
 			if (cycle % CYCLE_INFO_INTERVAL == 0)
 			{
 			  COUT << " cycle " << cycle << ", background information: z = " << (1./a) - 1. << ", average T00 = " << T00hom 
-                               <<", AVERAGE sigma_0 = " << sigma0 << ", background model = " 
+                               <<", AVERAGE sigma_0 = " << sigma0 << ",  N empty cells = " << (Real) Nempty <<" , background model = " 
                                << cosmo.Omega_cdm + cosmo.Omega_b + bg_ncdm(a, cosmo) << endl;
 
 
@@ -637,15 +632,16 @@ int main(int argc, char **argv)
 			else
 			{
 				if (cycle == 0)
-					fprintf(outfile, "# background statistics\n# cycle   tau/boxsize    a             conformal H/H0  phi(k=0)       T00(k=0)       sigma_0\n");
-				fprintf(outfile, " %6d   %e   %e   %e   %e   %e  %e\n", 
+					fprintf(outfile, "# background statistics\n# cycle   tau/boxsize    a             conformal H/H0  phi(k=0)       T00(k=0)       sigma_0      N_empty \n");
+				fprintf(outfile, " %6d   %e   %e   %e   %e   %e  %e %10d \n", 
 					cycle, 
 					tau, 
 					a, 
 					Hconf(a, fourpiG, cosmo) / Hconf(1., fourpiG, cosmo), 
 					scalarFT(kFT).real(), 
 					T00hom, 
-					sigma0);
+					sigma0,
+                                        Nempty);
 				fclose(outfile);
 			}
 		}

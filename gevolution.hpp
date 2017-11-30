@@ -2694,13 +2694,13 @@ void compute_vi_project_2(Field<Real> * vi, Field<Real> * source = NULL, Field<R
  }
 
 template<typename part, typename part_info, typename part_dataType>
-void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, Field<Real> * part_in_cube = NULL, int count = 1)
+void compute_count(Particles<part,part_info,part_dataType> * pcls, long* n_empty_size, Field<Real> * part_in_cube = NULL)
 {
 	
   typename std::list<part>::iterator it;
   Site xPart(pcls->lattice());
   Site xField(part_in_cube->lattice());
-  int n_empty_size = 0;
+  //long n_empty_size = 0;
   //  char filename[100];
   //  sprintf(filename, "output/output_count_%03d.dat", count);
   //  FILE *data=fopen(filename, "w");
@@ -2714,9 +2714,11 @@ void compute_count(Particles<part,part_info,part_dataType> * pcls, long Ngrid, F
   for(xPart.first(), xField.first(); xPart.test(); xPart.next(), xField.next())
     {
       (*part_in_cube)(xField) = (pcls->field())(xPart).size ;
-      if ((pcls->field())(xPart).size == 0) n_empty_size++;
+      if ((pcls->field())(xPart).size == 0) (*n_empty_size) += 1;
     }
- 
+
+  parallel.sum<long>(*n_empty_size); 
+  COUT << "N_empty: " << (*n_empty_size) << "\n";
 
 }
 
