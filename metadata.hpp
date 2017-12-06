@@ -76,6 +76,7 @@
 #define VEL_ZERO                    0
 #define VEL_PAST                    1
 #define VEL_SMOOTH                  2
+#define VEL_PAST_RESCALED           3
 
 #define SUB_VEL                     0
 #define VEL_NL                      1

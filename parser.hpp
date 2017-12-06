@@ -1073,6 +1073,11 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 		COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past 0" << COLORTEXT_RESET << endl;
 		sim.velocity_flag = VEL_PAST;
 	      }
+            else if (par_string[0] == 'r')
+              {
+                COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel past rescaled" << COLORTEXT_RESET << endl;
+                sim.velocity_flag = VEL_PAST_RESCALED;
+              }
 	    else if (par_string[0] == 's')
               {
                 COUT << " velocity method set to: " << COLORTEXT_CYAN << "vel smoothed" << COLORTEXT_RESET << endl;
@@ -1081,14 +1086,16 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 
 	    else
 	      {
-		COUT << COLORTEXT_RED << " error" << COLORTEXT_RESET << ": velocity method not supported!" << endl;
-		parallel.abortForce();
+                COUT << " None method specified, velocity method set to default: " << COLORTEXT_CYAN << "zero" << COLORTEXT_RESET << endl;
+                sim.velocity_flag = VEL_ZERO;
+		//COUT << COLORTEXT_RED << " error" << COLORTEXT_RESET << ": velocity method not supported!" << endl;
+		//parallel.abortForce();
 	      }
 	  }
 
         if (parseParameter(params, numparam, "subtract linear velocity", par_string))
           {
-            if (par_string[0] == 's' || par_string[0] == 'S')
+            if (par_string[0] == 'y' || par_string[0] == 'Y')
               {
                 COUT << "Velocity = Velocity - (Velocity)_LINEAR " << COLORTEXT_CYAN << endl;
                 sim.subvel_flag = SUB_VEL;

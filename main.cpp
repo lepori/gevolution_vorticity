@@ -112,6 +112,7 @@ int main(int argc, char **argv)
 	Real T00hom;
         Real sigma0;
         Real tot_count;
+        Real a_past = 1.;
         long Nempty;
         int subvel_counter = 1;
 
@@ -213,7 +214,6 @@ int main(int argc, char **argv)
 
 	Field<Real> phi;
 	Field<Real> source;
-        Field<Real> source_past;
         Field<Real> count_part;
 
 	Field<Real> chi;
@@ -226,7 +226,6 @@ int main(int argc, char **argv)
         Field<Real> vR;
         Field<Real> th;
 	Field<Cplx> scalarFT;
-        Field<Cplx> scalar_pastFT;
 	Field<Cplx> T00FT;
         Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
@@ -239,19 +238,16 @@ int main(int argc, char **argv)
 
 
 	source.initialize(lat,1);
-        source_past.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
         th.initialize(lat,1);
         T00.initialize(lat,1);
         count_part.initialize(lat,1);
 	scalarFT.initialize(latFT,1);
-        scalar_pastFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
         T00FT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
-        PlanFFT<Cplx> plan_source_past(&source_past, &scalar_pastFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
@@ -478,13 +474,20 @@ int main(int argc, char **argv)
 			projection_T0i_comm(&Bi);
 		}
 
-		// Compute velocity field, 3 methods
+		// Compute velocity field, 4 methods
 
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST)
 		  { 
 		    compute_vi_project_past0(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
                     store_vi(&vi_past, 1., &vi);                               
                   }  
+
+		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST_RESCALED)
+                  {
+		    compute_vi_project_past_rescaled(cosmo, &vi, &source, a, a_past, &Bi, &phi, &chi, &vi_past);
+                    store_vi(&vi_past, 1., &vi);
+                    a_past = a;
+                  }
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_SMOOTH && 1. / a < sim.z_pk[pkcount] + 1.)
 		  {
@@ -524,7 +527,7 @@ int main(int argc, char **argv)
 		if (sim.gr_flag > 0)
 		{	
                         compute_count(&pcls_cdm, &Nempty, &count_part);
-                        COUT << "N_empty outside loop  " << Nempty << "\n";
+                        
 			T00hom = 0.;
                         sigma0 = 0.;
 			for (x.first(); x.test(); x.next())
@@ -605,10 +608,10 @@ int main(int argc, char **argv)
 
 		    if(sim.subvel_flag == SUB_VEL)
 		      {
-                        subtract_velocity(sim, ic, cosmo,
-		    		          viFT, viFT, thFT,
-		    		          subvel_counter, a);
-                      }
+                       subtract_velocity(sim, ic, cosmo,
+	           			 viFT, viFT, thFT,
+		    		         subvel_counter, a);
+		      }
 
 		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                            
 		    projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field                                

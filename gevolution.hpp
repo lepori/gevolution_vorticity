@@ -25,6 +25,8 @@
 #define GEVOLUTION_HEADER
 
 #include "prng_engine.hpp"
+#include "d1_prime.hpp"
+
 #include <gsl/gsl_spline.h>
 
 using namespace std;
@@ -1043,10 +1045,10 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
     {
       k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
       k_mod = sqrt(k2);
-
-      //viFT_sub(k, 0) = a*Cplx(0.0, 1.0)*kshift[k.coord(0)]/k2*thFT(k)*numpts3d;
-      //viFT_sub(k, 1) = a*Cplx(0.0, 1.0)*kshift[k.coord(1)]/k2*thFT(k)*numpts3d;
-      //viFT_sub(k, 2) = a*Cplx(0.0, 1.0)*kshift[k.coord(2)]/k2*thFT(k)*numpts3d;
+      // Uncomment for computing the velocity from the CLASS linear transfer function
+      //viFT_sub(k, 0) = -Cplx(0.0, 1.0)*kshift[k.coord(0)].conj()*a/k2*thFT(k)*numpts3d;
+      //viFT_sub(k, 1) = -Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
+      //viFT_sub(k, 2) = -Cplx(0.0, 1.0)*kshift[k.coord(2)].conj()*a/k2*thFT(k)*numpts3d; 
       //      cout << "viTF, coorection: " << viFT(k, 0) <<    
       viFT_sub(k, 0) = viFT(k, 0) + Cplx(0.0, 1.0)*kshift[k.coord(0)].conj()*a/k2*thFT(k)*numpts3d;
       viFT_sub(k, 1) = viFT(k, 1) + Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
@@ -2275,7 +2277,7 @@ void compute_vi_project_past0(Field<Real> * vi, Field<Real> * source = NULL, dou
     }
 }
 
-void compute_vi_project_past1(Field<Real> * vi, Field<Real> * source = NULL, double a = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL, Field<Real> * vi_past = NULL)
+void compute_vi_project_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> * source = NULL, double a = 1., double a_past = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL, Field<Real> * vi_past = NULL)
 {
 
   Real  localCubePhi[8];
@@ -2284,7 +2286,10 @@ void compute_vi_project_past1(Field<Real> * vi, Field<Real> * source = NULL, dou
   Real  localEdgeTi0[12];  
 
   Site xvi(vi->lattice());
+
+  Real rescale = D1_prime(cosmo, a)/D1_prime(cosmo, a_past)*a/a_past;
       
+  COUT << "Rescale:  " << rescale << "\n";
   for(xvi.first(); xvi.test(); xvi.next())
     {  
 
@@ -2332,62 +2337,21 @@ void compute_vi_project_past1(Field<Real> * vi, Field<Real> * source = NULL, dou
 
       if (Bi != NULL)
         {
-      
 	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
 	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
 	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
-
-	    localEdgeTi0[5] = (*Bi)(xvi+0, 1)*(1. + 2.*(localCubePhi[4] + localCubePhi[6]) + localCubeChi[4] + localCubeChi[6]);
-	    localEdgeTi0[9] = (*Bi)(xvi+0, 2)*(1. + 2.*(localCubePhi[4] + localCubePhi[5]) + localCubeChi[4] + localCubeChi[5]);
-
-	    localEdgeTi0[1] = (*Bi)(xvi+1, 0)*(1. + 2.*(localCubePhi[2] + localCubePhi[6]) + localCubeChi[2] + localCubeChi[6]);
-	    localEdgeTi0[10] = (*Bi)(xvi+1, 2)*(1. + 2.*(localCubePhi[0] + localCubePhi[3]) + localCubeChi[0] + localCubeChi[3]);
-
-	    localEdgeTi0[2] = (*Bi)(xvi+2, 0)*(1. + 2.*(localCubePhi[1] + localCubePhi[5])+ localCubeChi[1] + localCubeChi[5]);
-	    localEdgeTi0[6] = (*Bi)(xvi+2, 1)*(1. + 2.*(localCubePhi[1] + localCubePhi[3])+ localCubeChi[1] + localCubeChi[3]);
-
-	    localEdgeTi0[3]  = (*Bi)(xvi+1+2, 0)*(1. + 2.*(localCubePhi[3] + localCubePhi[7]) + localCubeChi[3] + localCubeChi[7]);
-	    localEdgeTi0[7]  = (*Bi)(xvi+0+2, 1)*(1. + 2.*(localCubePhi[5] + localCubePhi[7]) + localCubeChi[5] + localCubeChi[7]);
-	    localEdgeTi0[11] = (*Bi)(xvi+0+1, 2)*(1. + 2.*(localCubePhi[6] + localCubePhi[7]) + localCubeChi[6] + localCubeChi[7]);
-	    
         }
 
 
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)=(*vi_past)(xvi,0)/a/a/a;}
+      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)=(*vi_past)(xvi,0)*rescale;}
       else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
  
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1)/a/a/a;}
+      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1)*rescale;}
       else {(*vi)(xvi,1) = 2.*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);}
 
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2)/a/a/a;}
+      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2)*rescale;}
       else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
       
-      if ( (localCubeT00[4] + localCubeT00[6]) < 2.E-300) {(*vi)(xvi+0,1)=(*vi_past)(xvi+0,1)/a/a/a;}
-      else {(*vi)(xvi+0,1) = 2.*localEdgeTi0[5]/(localCubeT00[4] + localCubeT00[6]);}
-
-      if ( (localCubeT00[4] + localCubeT00[5]) < 2.E-300) {(*vi)(xvi+0,2)=(*vi_past)(xvi+0,2)/a/a/a;}
-      else {(*vi)(xvi+0,2) = 2.*localEdgeTi0[9]/(localCubeT00[4] + localCubeT00[5]);}
-
-      if ( (localCubeT00[2] + localCubeT00[6]) < 2.E-300) {(*vi)(xvi+1,0)=(*vi_past)(xvi+1,0)/a/a/a;}
-      else {(*vi)(xvi+1,0)= 2.*localEdgeTi0[1]/(localCubeT00[2] + localCubeT00[6]);}
-
-      if ( (localCubeT00[0] + localCubeT00[3]) < 2.E-300) {(*vi)(xvi+1,2)=(*vi_past)(xvi+1,2)/a/a/a;}
-      else {(*vi)(xvi+1,2)= 2.*localEdgeTi0[10]/(localCubeT00[0] + localCubeT00[3]);}
-
-      if ( (localCubeT00[1] + localCubeT00[5]) < 2.E-300) {(*vi)(xvi+2,0)=(*vi_past)(xvi+2,0)/a/a/a;}
-      else {(*vi)(xvi+2,0)= 2.*localEdgeTi0[2]/(localCubeT00[1] + localCubeT00[5]);}
-
-      if ( (localCubeT00[1] + localCubeT00[3]) < 2.E-300) {(*vi)(xvi+2,1)=(*vi_past)(xvi+2,1)/a/a/a;}
-      else {(*vi)(xvi+2,1)= 2.*localEdgeTi0[6]/(localCubeT00[1] + localCubeT00[3]);}
-
-      if ( (localCubeT00[3] + localCubeT00[7]) < 2.E-300) {(*vi)(xvi+1+2,0)=(*vi_past)(xvi+1+2,0)/a/a/a;}
-      else {(*vi)(xvi+1+2,0)= 2.*localEdgeTi0[3]/(localCubeT00[3] + localCubeT00[7]);}
-
-      if ( (localCubeT00[5] + localCubeT00[7]) < 2.E-300) {(*vi)(xvi+0+2,1)= (*vi_past)(xvi+0+2,1)/a/a/a;}
-      else {(*vi)(xvi+0+2,1)= 2.*localEdgeTi0[7]/(localCubeT00[5] + localCubeT00[7]);}
-
-      if ( (localCubeT00[6] + localCubeT00[7]) < 2.E-300) {(*vi)(xvi+0+1,2)=(*vi_past)(xvi+0+1,2)/a/a/a;}
-      else {(*vi)(xvi+0+1,2)= 2.*localEdgeTi0[11]/(localCubeT00[6] + localCubeT00[7]);}
 
     }
 }
@@ -2718,7 +2682,6 @@ void compute_count(Particles<part,part_info,part_dataType> * pcls, long* n_empty
     }
 
   parallel.sum<long>(*n_empty_size); 
-  COUT << "N_empty: " << (*n_empty_size) << "\n";
 
 }
 
