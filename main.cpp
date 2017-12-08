@@ -60,6 +60,7 @@
 #include "tools.hpp"
 #include "output.hpp"
 #include "hibernation.hpp"
+#include "vorticity.hpp"
 
 using namespace std;
 
@@ -478,14 +479,14 @@ int main(int argc, char **argv)
 
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST)
 		  { 
-		    compute_vi_project_past0(&vi, &source, 1., &Bi, &phi, &chi, &vi_past); 
-                    store_vi(&vi_past, 1., &vi);                               
+		    compute_vi_past(&vi, &source, &Bi, &phi, &chi, &vi_past); 
+                    store_vi(&vi_past, &vi);                               
                   }  
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST_RESCALED)
                   {
-		    compute_vi_project_past_rescaled(cosmo, &vi, &source, a, a_past, &Bi, &phi, &chi, &vi_past);
-                    store_vi(&vi_past, 1., &vi);
+		    compute_vi_past_rescaled(cosmo, &vi, &source, a, a_past, &Bi, &phi, &chi, &vi_past);
+                    store_vi(&vi_past, &vi);
                     a_past = a;
                   }
 
@@ -494,8 +495,8 @@ int main(int argc, char **argv)
                     compute_Ti0(&Ti0, &Bi, &phi, &chi);
 		    plan_Ti0.execute(FFT_FORWARD);
                     plan_source.execute(FFT_FORWARD);
-                    covolve_field(&Ti0FT, &Ti0FT, 3, sim.sigma);
-                    covolve_field(&T00FT, &scalarFT, 1, sim.sigma);
+                    convolve_field(&Ti0FT, &Ti0FT, 3, sim.sigma);
+                    convolve_field(&T00FT, &scalarFT, 1, sim.sigma);
                     plan_Ti0.execute(FFT_BACKWARD);
                     plan_T00.execute(FFT_BACKWARD);
                     compute_velocity_smooth(&vi,&Ti0,&T00);
@@ -503,7 +504,7 @@ int main(int argc, char **argv)
             
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_ZERO && 1. / a < sim.z_pk[pkcount] + 1.)
                   {
-                    compute_vi_project_0(&vi, &source, 1., &Bi, &phi, &chi);
+                    compute_vi_zero(&vi, &source, &Bi, &phi, &chi);
                   }
 
                 
@@ -613,8 +614,8 @@ int main(int argc, char **argv)
 		    		         subvel_counter, a);
 		      }
 
-		    projectFTvelocity_vR(vRFT, viFT, 1.0);      // compute the vorticity field                            
-		    projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field                                
+		    projectFTvelocityVR(vRFT, viFT);      // compute the vorticity field                            
+		    projectFTvelocityTh(thFT, viFT);      // compute the div_vi field                                
 		    ++ subvel_counter;
 		    plan_vi.execute(FFT_BACKWARD);
 		    plan_vR.execute(FFT_BACKWARD);
@@ -635,7 +636,13 @@ int main(int argc, char **argv)
 			else
 			{
 				if (cycle == 0)
-					fprintf(outfile, "# background statistics\n# cycle   tau/boxsize    a             conformal H/H0  phi(k=0)       T00(k=0)       sigma_0      N_empty \n");
+				  fprintf(
+                                    outfile, 
+                                    "# background statistics\n# cycle   "
+                                    "tau/boxsize    a             "
+                                    "conformal H/H0  phi(k=0)       "
+                                    "T00(k=0)       sigma_0      N_empty \n"
+                                  );
 				fprintf(outfile, " %6d   %e   %e   %e   %e   %e  %e %10d \n", 
 					cycle, 
 					tau, 
@@ -694,12 +701,6 @@ int main(int argc, char **argv)
 			fft_count++;
 #endif
 			projectFTvector(BiFT, BiFT, fourpiG * dx * dx); // solve B using elliptic constraint (k-space)
-			/*if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
-			  //subtract_velocity(viFT, viFT, scalarFT, (long) sim.numpts, cosmo.h, particles_counter);
-		        projectFTvelocity_wi(wiFT, viFT, 1.0);      // compute the vorticity field 
-			projectFTvelocity_th(thFT, viFT, 1.0);      // compute the div_vi field
-                        ++ particles_counter;
-                        }*/
 
 #ifdef CHECK_B
 			evolveFTvector(SijFT, BiFT_check, a * a * dtau_old); 
@@ -714,19 +715,12 @@ int main(int argc, char **argv)
 			ref2_time= MPI_Wtime();
 #endif				
 			plan_Bi.execute(FFT_BACKWARD);  // go back to position space
-			//if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.){
-			//plan_vi.execute(FFT_BACKWARD);
-                        //plan_wi.execute(FFT_BACKWARD);
-                        //plan_th.execute(FFT_BACKWARD); 
-			//}
+
 #ifdef BENCHMARK
 			fft_time += MPI_Wtime() - ref2_time;
 			fft_count += 3;
 #endif
  			Bi.updateHalo();  // communicate halo values
-                        //vi.updateHalo(); 
-                        //wi.updateHalo();
-                        //th.updateHalo();
 		}
 
 #ifdef BENCHMARK 
