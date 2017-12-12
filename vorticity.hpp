@@ -656,7 +656,7 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
   Real k_mod;
 
   char filename[100];  
-  sprintf(filename, "output/Transfer_gevolution/test_z%d_tk.dat", count);
+  sprintf(filename, "/home/leporif7/Nbody/gevolution-1.1/output/Transfer_gevolution/test_z%d_tk.dat", count);
   loadTransferFunctionsVel(filename, tk_psi, tk_th_cdm, "cdm", sim.boxsize, cosmo.h);
   loadTransferFunctionsVel(filename, tk_psi, tk_th_b, "b", sim.boxsize, cosmo.h);
       
@@ -703,9 +703,9 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
       //viFT_sub(k, 1) = -Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
       //viFT_sub(k, 2) = -Cplx(0.0, 1.0)*kshift[k.coord(2)].conj()*a/k2*thFT(k)*numpts3d; 
       //      cout << "viTF, coorection: " << viFT(k, 0) <<    
-      viFT_sub(k, 0) = viFT(k, 0) + Cplx(0.0, 1.0)*kshift[k.coord(0)].conj()*a/k2*thFT(k)*numpts3d;
-      viFT_sub(k, 1) = viFT(k, 1) + Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
-      viFT_sub(k, 2) = viFT(k, 2) + Cplx(0.0, 1.0)*kshift[k.coord(2)].conj()*a/k2*thFT(k)*numpts3d;
+      viFT_sub(k, 0) = viFT(k, 0) - Cplx(0.0, 1.0)*kshift[k.coord(0)].conj()*a/k2*thFT(k)*numpts3d;
+      viFT_sub(k, 1) = viFT(k, 1) - Cplx(0.0, 1.0)*kshift[k.coord(1)].conj()*a/k2*thFT(k)*numpts3d;
+      viFT_sub(k, 2) = viFT(k, 2) - Cplx(0.0, 1.0)*kshift[k.coord(2)].conj()*a/k2*thFT(k)*numpts3d;
         
     } 
  
@@ -1019,8 +1019,7 @@ void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> *
   Site xvi(vi->lattice());
 
   Real rescale = D1_prime(cosmo, a)/D1_prime(cosmo, a_past)*a/a_past;
-      
-  COUT << "Rescale:  " << rescale << "\n";
+  
   for(xvi.first(); xvi.test(); xvi.next())
     {  
 
