@@ -1088,7 +1088,7 @@ int parseMetadata(parameter * & params, const int numparam, metadata & sim, cosm
 
         if (parseParameter(params, numparam, "subtract linear velocity", par_string))
           {
-            if (par_string[0] == 's' || par_string[0] == 'S')
+            if (par_string[0] == 'y' || par_string[0] == 'Y')
               {
                 COUT << "Velocity = Velocity - (Velocity)_LINEAR " << COLORTEXT_CYAN << endl;
                 sim.subvel_flag = SUB_VEL;
