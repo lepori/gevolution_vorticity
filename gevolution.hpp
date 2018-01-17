@@ -1266,5 +1266,137 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #define projection_Tij_comm symtensorProjectionCICNGP_comm
 #endif
 
+//////////////////////////
+// projection_T00_project
+//////////////////////////
+// Description:
+//   Particle-mesh projection for T00, including geometric corrections
+// 
+// Arguments:
+//   pcls       pointer to particle handler
+//   T00        pointer to target field
+//   a          scale factor at projection (needed in order to convert
+//              canonical momenta to energies)
+//   phi        pointer to Bardeen potential which characterizes the
+//              geometric corrections (volume distortion); can be set to
+//              NULL which will result in no corrections applied
+//   coeff      coefficient applied to the projection operation (default 1)
+//
+// Returns:
+// 
+//////////////////////////
+
+template<typename part, typename part_info, typename part_dataType>
+void projection_Ti0_project(Particles<part, part_info, part_dataType> * pcls, Field<Real> * Ti0, double a = 1., Field<Real> * phi = NULL, Field<Real> * chi = NULL, double coeff = 1.)
+{	
+	if (Ti0->lattice().halo() == 0)
+	{
+		cout<< "projection_T00_project: target field needs halo > 0" << endl;
+		exit(-1);
+	}
+	
+	Site xPart(pcls->lattice());
+	Site xField(Ti0->lattice());
+	
+	typename std::list<part>::iterator it;
+	
+	Real referPos[3];
+	Real weightScalarGridUp[3];
+	Real weightScalarGridDown[3];
+	Real dx = pcls->res();
+
+        Real w;
+	Real * q;
+	size_t offset_q = offsetof(part,vel);
+	
+	
+	double mass = coeff / (dx*dx*dx);
+	mass *= *(double*)((char*)pcls->parts_info() + pcls->mass_offset());
+	mass /= a;
+	
+	
+	Real localCube[24]; // XYZ = 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111
+	Real localCubePhi[8];
+	Real localCubeChi[8];
+
+	for (int i = 0; i < 8; i++) localCubePhi[i] = 0.0;
+	for (int i = 0; i < 8; i++) localCubeChi[i] = 0.0; 
+  
+	for (xPart.first(), xField.first(); xPart.test(); xPart.next(), xField.next())
+	{			  
+		if (pcls->field()(xPart).size != 0)
+		{
+			for(int i = 0; i < 3; i++) referPos[i] = xPart.coord(i)*dx;
+			for(int i = 0; i < 24; i++) localCube[i] = 0.0;
+			
+			if (phi != NULL)
+			{
+				localCubePhi[0] = (*phi)(xField);
+				localCubePhi[1] = (*phi)(xField+2);
+				localCubePhi[2] = (*phi)(xField+1);
+				localCubePhi[3] = (*phi)(xField+1+2);
+				localCubePhi[4] = (*phi)(xField+0);
+				localCubePhi[5] = (*phi)(xField+0+2);
+				localCubePhi[6] = (*phi)(xField+0+1);
+				localCubePhi[7] = (*phi)(xField+0+1+2);
+			}
+			if (chi != NULL)
+			{
+				localCubeChi[0] = (*chi)(xField);
+				localCubeChi[1] = (*chi)(xField+2);
+				localCubeChi[2] = (*chi)(xField+1);
+				localCubeChi[3] = (*chi)(xField+1+2);
+				localCubeChi[4] = (*chi)(xField+0);
+				localCubeChi[5] = (*chi)(xField+0+2);
+				localCubeChi[6] = (*chi)(xField+0+1);
+				localCubeChi[7] = (*chi)(xField+0+1+2);
+			}
+  
+			for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
+			{
+				for (int i = 0; i < 3; i++)
+				{
+					weightScalarGridUp[i] = ((*it).pos[i] - referPos[i]) / dx;
+					weightScalarGridDown[i] = 1.0l - weightScalarGridUp[i];
+				}
+				
+				q = (Real*)((char*)&(*it)+offset_q);
+                
+                                for (int i = 0; i < 3; i++){
+				 w =  q[i];
+				
+				//000
+				localCube[8*i] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridDown[2]*w*(1.+6*localCubePhi[0]-localCubeChi[0]);
+				//001
+				localCube[8*i+1] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridUp[2]*w*(1.+6*localCubePhi[1]-localCubeChi[1]);
+				//010
+				localCube[8*i+2] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridDown[2]*w*(1.+6*localCubePhi[2]-localCubeChi[2]);
+				//011
+				localCube[8*i+3] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*w*(1.+6*localCubePhi[3]-localCubeChi[3]);
+				//100
+				localCube[8*i+4] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridDown[2]*w*(1.+6*localCubePhi[4]-localCubeChi[4]);
+				//101
+				localCube[8*i+5] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2]*w*(1.+6*localCubePhi[5]-localCubeChi[5]);
+				//110
+				localCube[8*i+6] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridDown[2]*w*(1.+6*localCubePhi[6]-localCubeChi[6]);
+				//111
+				localCube[8*i+7] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*w*(1.+6*localCubePhi[7]-localCubeChi[7]);
+                                }
+			}
+			for (int i = 0; i < 3; i++){
+			(*Ti0)(xField,i)       += localCube[8*i] * mass;
+			(*Ti0)(xField+2,i)     += localCube[8*i+1] * mass;
+			(*Ti0)(xField+1,i)     += localCube[8*i+2] * mass;
+			(*Ti0)(xField+1+2,i)   += localCube[8*i+3] * mass;
+			(*Ti0)(xField+0,i)     += localCube[8*i+4] * mass;
+			(*Ti0)(xField+0+2,i)   += localCube[8*i+5] * mass;
+			(*Ti0)(xField+0+1,i)   += localCube[8*i+6] * mass;
+			(*Ti0)(xField+0+1+2,i) += localCube[8*i+7] * mass;
+                         }
+		}
+	}  
+}
+
+
 #endif
 

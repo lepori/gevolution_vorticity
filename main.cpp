@@ -458,7 +458,7 @@ int main(int argc, char **argv)
 			}
 		}
 		projection_T00_comm(&source);
-
+                source.updateHalo();
                 
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC)
@@ -473,38 +473,44 @@ int main(int argc, char **argv)
 					projection_T0i_project(pcls_ncdm+i, &Bi, &phi);
 			}
 			projection_T0i_comm(&Bi);
+                        Bi.updateHalo();
 		}
 
 		// Compute velocity field, 4 methods
 
+                projection_init(&Ti0);
+                projection_Ti0_project(&pcls_cdm, &Ti0, a, &phi, &chi);
+                vertexProjectionCIC_comm(&Ti0);
+
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST)
 		  { 
-		    compute_vi_past(&vi, &source, &Bi, &phi, &chi, &vi_past); 
+		    compute_vi_past(&vi, &source, &Ti0, &vi_past); 
                     store_vi(&vi_past, &vi);                               
                   }  
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_PAST_RESCALED)
                   {
-		    compute_vi_past_rescaled(cosmo, &vi, &source, a, a_past, &Bi, &phi, &chi, &vi_past);
+		    compute_vi_past_rescaled(cosmo, &vi, &source, a, a_past, &Ti0, &vi_past);
                     store_vi(&vi_past, &vi);
                     a_past = a;
                   }
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_SMOOTH && 1. / a < sim.z_pk[pkcount] + 1.)
 		  {
-                    compute_Ti0(&Ti0, &Bi, &phi, &chi);
+		    //compute_Ti0(&Ti0, &Bi);
 		    plan_Ti0.execute(FFT_FORWARD);
                     plan_source.execute(FFT_FORWARD);
                     convolve_field(&Ti0FT, &Ti0FT, 3, sim.sigma);
                     convolve_field(&T00FT, &scalarFT, 1, sim.sigma);
                     plan_Ti0.execute(FFT_BACKWARD);
                     plan_T00.execute(FFT_BACKWARD);
+                    T00.updateHalo();              
                     compute_velocity_smooth(&vi,&Ti0,&T00);
                   } 
             
                 if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_ZERO && 1. / a < sim.z_pk[pkcount] + 1.)
                   {
-                    compute_vi_zero(&vi, &source, &Bi, &phi, &chi);
+                    compute_vi_zero(&vi, &source, &Ti0);
                   }
 
                 
@@ -602,7 +608,6 @@ int main(int argc, char **argv)
                 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && pkcount < sim.num_pk && 1. / a < sim.z_pk[pkcount] + 1.)              
 		  {
-		    //plan_phi.execute(FFT_FORWARD);
 		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                           
 		    plan_th.execute(FFT_FORWARD);
 		    plan_vR.execute(FFT_FORWARD);
@@ -620,9 +625,10 @@ int main(int argc, char **argv)
 		    plan_vi.execute(FFT_BACKWARD);
 		    plan_vR.execute(FFT_BACKWARD);
 		    plan_th.execute(FFT_BACKWARD);
-         
-		  }
-
+                    th.updateHalo();
+                    vR.updateHalo();
+		    vi.updateHalo();
+ 		  }
 
 		// record some background data
 		if (kFT.setCoord(0, 0, 0))
@@ -734,9 +740,9 @@ int main(int argc, char **argv)
 			COUT << COLORTEXT_CYAN << " writing snapshot" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &Bi_check, &BiFT_check, &plan_Bi_check);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &scalarFT, &BiFT, &SijFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check);
 #else
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &scalarFT, &BiFT, &SijFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th);
 #endif
 
 			snapcount++;

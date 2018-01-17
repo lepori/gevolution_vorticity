@@ -1,3 +1,4 @@
+
 /////////////////////////
 // vorticity.hpp
 //////////////////////////
@@ -714,18 +715,18 @@ void subtract_velocity(metadata & sim, icsettings & ic, cosmology & cosmo,
  
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////         
-// Description:                                                                                                                     
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Description:                                                                                                  
 //   Compute the rotational part of the velocity field, in Fourier space
-//                                                                                                                                 
-//                                                                                                                                    
-// Arguments:                                                                                                                          
-//                                                                                                                                     
-//   vRFT          reference to the Fourier image of the rotational part of the velocity                                          
-//   viFT          reference to the input Fourier image of the velocity field                                                
-//                                                                                                                                     
-// Returns:                                                                                                                        
-//                                                                                                                                   
+//                                                                                                            
+//                                                                                                            
+// Arguments:                                                                                                     
+//                                                                                                           
+//   vRFT          reference to the Fourier image of the rotational part of the velocity                     
+//   viFT          reference to the input Fourier image of the velocity field                                  
+//                                                                                                             
+// Returns:                                                                                                     
+//                                                                                                             
 //////////////////////////
 
 void projectFTvelocityVR(Field<Cplx> & vRFT, Field<Cplx> & viFT)
@@ -735,19 +736,20 @@ void projectFTvelocityVR(Field<Cplx> & vRFT, Field<Cplx> & viFT)
   int i;
   Real * gridk2;
   Cplx * kshift;
+  Real * gridk;
   rKSite k(vRFT.lattice());
   Real k2;
   Cplx tmp(0., 0.);
 
   gridk2 = (Real *) malloc(linesize * sizeof(Real));
   kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
-
+  gridk = (Real *) malloc(linesize * sizeof(Real));
 
   for (i = 0; i < linesize; i++)
     {
-      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      gridk[i] = (Real) linesize * sin(M_PI * 2.0 * (Real) i / (Real) linesize);
       kshift[i] = gridk2[i] * Cplx(cos(M_PI * (Real) i / (Real) linesize), -sin(M_PI * (Real) i / (Real) linesize));
-      gridk2[i] *= gridk2[i];
+      gridk2[i] = gridk[i]*gridk[i];
     }
 
 
@@ -761,13 +763,21 @@ void projectFTvelocityVR(Field<Cplx> & vRFT, Field<Cplx> & viFT)
     }
   for (; k.test(); k.next())
     {
+
       k2 = gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)];
+      if ((k.coord(0) == 0 || k.coord(0) == linesize/2)&& 
+          (k.coord(1) == 0 || k.coord(1) == linesize/2)&&
+	  (k.coord(2) == 0 || k.coord(2) == linesize/2)  ) {
+	vRFT(k, 0) = Cplx(0.,0.);
+	vRFT(k, 1) = Cplx(0.,0.);
+	vRFT(k, 2) = Cplx(0.,0.);
+      }
+      else {
+      tmp = (gridk[k.coord(0)] * viFT(k, 0) + gridk[k.coord(1)] * viFT(k, 1) + gridk[k.coord(2)] * viFT(k, 2)) / k2;
 
-      tmp = (kshift[k.coord(0)] * viFT(k, 0) + kshift[k.coord(1)] * viFT(k, 1) + kshift[k.coord(2)] * viFT(k, 2)) / k2;
-
-      vRFT(k, 0) = (viFT(k, 0) - kshift[k.coord(0)].conj() * tmp); 
-      vRFT(k, 1) = (viFT(k, 1) - kshift[k.coord(1)].conj() * tmp);
-      vRFT(k, 2) = (viFT(k, 2) - kshift[k.coord(2)].conj() * tmp);
+      vRFT(k, 0) = (viFT(k, 0) - gridk[k.coord(0)] * tmp); 
+      vRFT(k, 1) = (viFT(k, 1) - gridk[k.coord(1)] * tmp);
+      vRFT(k, 2) = (viFT(k, 2) - gridk[k.coord(2)] * tmp);}
     }
 
 
@@ -776,18 +786,18 @@ void projectFTvelocityVR(Field<Cplx> & vRFT, Field<Cplx> & viFT)
 
 }
 
-//////////////////////////                                                                                                     
-// projectFTvelocityTh                                                                                                        
-//////////////////////////                                                                                                   
-// Description:                                                                                                             
+//////////////////////////                                                                                     
+// projectFTvelocityTh                                                                                        
+//////////////////////////                                                                                      
+// Description:                                                                                                 
 //   Compute the diverge of the velocity in Fourier space
-//                                                                                                                           
+//                                                                                                               
 // Arguments:
 //   thFT       reference to the Fourier image of the divergence of the velocity field
-//   viFT       reference to the Fourier image of the velocity field                                                           
+//   viFT       reference to the Fourier image of the velocity field                                             
 //
-// Returns:                                                                                                                       
-//                                                                                                                                 
+// Returns:                                                                                                       
+//                                                                                                                
 //////////////////////////                                                                                                                
 
 void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
@@ -795,7 +805,7 @@ void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
   const int linesize = thFT.lattice().size(1);
   int i;
   Real * gridk2;
-  Cplx * gridk;
+  Real * gridk;
   Cplx * kshift;
   rKSite k(thFT.lattice());
   Real k2;
@@ -803,21 +813,21 @@ void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
 
   gridk2 = (Real *) malloc(linesize * sizeof(Real));
   kshift = (Cplx *) malloc(linesize * sizeof(Cplx));
-  gridk = (Cplx *) malloc(linesize * sizeof(Cplx));
+  gridk = (Real *) malloc(linesize * sizeof(Real));
  
   for (i = 0; i < linesize; i++)
     {
-      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      gridk[i] = (Real) linesize * sin(M_PI * 2.0 * (Real) i / (Real) linesize);
       kshift[i] = gridk2[i] * Cplx(cos(M_PI * (Real) i / (Real) linesize), -sin(M_PI * (Real) i / (Real) linesize));
-      gridk2[i] *= gridk2[i];
-      gridk[i] = Cplx(2.* (Real) linesize * sin(M_PI * (Real) i / (Real) linesize), 0.);
+      gridk2[i] = gridk[i]*gridk[i];
     }
   
+
   for (k.first(); k.test(); k.next())
     {
-      thFT(k) = (kshift[k.coord(0)] * viFT(k, 0) + 
-                 kshift[k.coord(1)] * viFT(k, 1) + 
-                 kshift[k.coord(2)] * viFT(k, 2) );
+      thFT(k) = (gridk[k.coord(0)] * viFT(k, 0) + 
+                 gridk[k.coord(1)] * viFT(k, 1) + 
+                 gridk[k.coord(2)] * viFT(k, 2) );
     }
 
   free(gridk2);
@@ -842,19 +852,21 @@ void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
 //                                                                                                                                 
 ////////////////////////// 
 
-void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
+void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL)
 {
 
-  Real  localCubePhi[8];
-  Real  localCubeChi[8];
-  Real  localCubeT00[8];
-  Real  localEdgeTi0[12];  
+  //  Real  localCubePhi[8];
+  //Real  localCubeChi[8];
+  //Real  localCubeT00[8];
+  //Real  localEdgeTi0[12];  
   
   Site xvi(vi->lattice());
       
   for(xvi.first(); xvi.test(); xvi.next())
     {  
 
+
+      /*
       for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
       for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
       for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
@@ -884,17 +896,25 @@ void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 	  localCubeT00[4] = (*source)(xvi+0);
 	}
   
+      */
+      //      if (Bi != NULL)
+      //  {
+      //
+      //	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
+      //	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
+      //    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
+      //	    
+      //        }
 
-      if (Bi != NULL)
-        {
-      
-	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
-	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
-	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
-	    
-        }
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= 0.0;}
+      else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
 
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,1)= 0.0;}
+      else {(*vi)(xvi,1) = (*Ti0)(xvi,1)/(*source)(xvi);}
 
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,2)= 0.0;}
+      else {(*vi)(xvi,2) = (*Ti0)(xvi,2)/(*source)(xvi);}
+      /*
       if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)= 0.0;}
       else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
  
@@ -903,7 +923,7 @@ void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 
       if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= 0.0;}
       else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
-
+      */
     }
 }
 
@@ -926,7 +946,7 @@ void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 //////////////////////////
 
 
-void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Bi = NULL, Field<Real> *phi = NULL, Field<Real> * chi = NULL, Field<Real> * vi_past = NULL)
+void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL, Field<Real> * vi_past = NULL)
 {
 
   Real  localCubePhi[8];
@@ -938,7 +958,7 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
       
   for(xvi.first(); xvi.test(); xvi.next())
     {  
-
+      /*
       for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
       for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
       for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
@@ -976,7 +996,16 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
         }
 
+      */
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= (*vi_past)(xvi,0);}
+      else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
 
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1);}
+      else {(*vi)(xvi,1) = (*Ti0)(xvi,1)/(*source)(xvi);}
+
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2);}
+      else {(*vi)(xvi,2) = (*Ti0)(xvi,2)/(*source)(xvi);}
+      /*
       if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)=(*vi_past)(xvi,0);}
       else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
  
@@ -985,7 +1014,7 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 
       if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2);}
       else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
-
+      */
     }
 }
 
@@ -1008,7 +1037,7 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 //                                                                                                                                 
 ////////////////////////// 
 
-void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> * source = NULL, double a = 1., double a_past = 1., Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL, Field<Real> * vi_past = NULL)
+void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> * source = NULL, double a = 1., double a_past = 1., Field<Real> * Ti0 = NULL, Field<Real> * vi_past = NULL)
 {
 
   Real  localCubePhi[8];
@@ -1022,7 +1051,7 @@ void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> *
   
   for(xvi.first(); xvi.test(); xvi.next())
     {  
-
+      /*
       for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
       for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
       for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
@@ -1069,7 +1098,16 @@ void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> *
 
       if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2)*rescale;}
       else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
+      */
 
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= (*vi_past)(xvi,0)*rescale;}
+      else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
+
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1)*rescale;}
+      else {(*vi)(xvi,1) = (*Ti0)(xvi,1)/(*source)(xvi);}
+
+      if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2)*rescale;}
+      else {(*vi)(xvi,2) = (*Ti0)(xvi,2)/(*source)(xvi);}
     }
 }
 
@@ -1127,20 +1165,20 @@ void compute_count(Particles<part,part_info,part_dataType> * pcls, long* n_empty
 
 }
 
-//////////////////////////                                                                                                                
+//////////////////////////                                                                                                         
 // convolve_field
-//////////////////////////                                                                                                                 
-// Description:                                                                                                                            
+//////////////////////////                                                                                                          
+// Description:                                                                                                                     
 //   Compute the smoothed field in Fourier space through convolution.
-//                                                                                                                                         
-// Arguments:                                                                                                                              
+//                                                                                                                                 
+// Arguments:                                                                                                                    
 //   fieldFT_conv          reference to the Fourier image of the convolved field
 //   fieldFT               reference to the Fourier image of the field to be smoothed
 //   dim_field             3 for vector fields, 1 for scalar fields
 //   sigma                 size of the smoothing, in code units
-//                                                                                                                                         
-// Returns:                                                                                                                                
-//                                                                                                                                       
+//                                                                                                                                
+// Returns:                                                                                                                      
+//                                                                        
 //////////////////////////
 
 void convolve_field(Field<Cplx> * fieldFT_conv, Field<Cplx> * fieldFT, int dim_field, Real sigma) 
@@ -1175,20 +1213,20 @@ void convolve_field(Field<Cplx> * fieldFT_conv, Field<Cplx> * fieldFT, int dim_f
 }
 
 
-//////////////////////////                                                                                                              
+//////////////////////////                                                                                                          
 // compute_Ti0 
-//////////////////////////                                                                                                              
+//////////////////////////                                                                                                        
 // Description:                                                                                                                      
 //   Compute T^i_0 from T^0_i
 //                                                                                                                                     
 // Arguments:                                                                                                                         
 //   Ti0        reference to the field Ti0 = a^4 T^i_0
-//   Bi         reference to the field Bi (a^4 T^0_i)                                                                                     
-//   phi        reference to the field phi                                                                                               
-//   chi        reference to the field chi                                                                                               
+//   Bi         reference to the field Bi (a^4 T^0_i)                                                                            
+//   phi        reference to the field phi                                                                                       
+//   chi        reference to the field chi                                                                                    
 //
 // Returns:                                                                                                                            
-//                                                                                                                                      
+//                                                                                                                                
 //////////////////////////
 
 void compute_Ti0(Field<Real> * Ti0, Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
@@ -1212,24 +1250,23 @@ void compute_Ti0(Field<Real> * Ti0, Field<Real> * Bi = NULL, Field<Real> * phi =
 }
 
 
-//////////////////////////                                                                                                                  
+//////////////////////////                                                                                     
 // compute_velocity_smooth
-//////////////////////////                                                                                                                  
-// Description:                                                                                                                             
+//////////////////////////                                                                                     
+// Description:                                                                                              
 //   Compute the smoothed velocity field from the smoothed fields Ti0 and T00
-//                                                                                                                                          
-// Arguments:                                                                                                                               
+//                                                                                                                   
+// Arguments:                                                                                                        
 //   vi         reference to the velocity field vi 
-//   Ti0        reference to the field Ti0 = a^4 T^i_0                                                                                      
+//   Ti0        reference to the field Ti0 = a^4 T^i_0                                                         
 //   T00        reference to the field T00 (a^3 T^0_0)                                        
-//                                                                                                                                         
-// Returns:                                                                                                                                
-//                                                                                                                                         
+//                                                                                                                 
+// Returns:                                                                             
+//                                                                                                               
 //////////////////////////
 
 void compute_velocity_smooth(Field<Real> * vi, Field<Real> * Ti0 = NULL, Field<Real> * T00 = NULL)
 {
-
   Site xvi(vi->lattice());
       
   for(xvi.first(); xvi.test(); xvi.next())
@@ -1238,6 +1275,64 @@ void compute_velocity_smooth(Field<Real> * vi, Field<Real> * Ti0 = NULL, Field<R
       (*vi)(xvi,1) = 2.*(*Ti0)(xvi,1)/((*T00)(xvi) + (*T00)(xvi+1));
       (*vi)(xvi,2) = 2.*(*Ti0)(xvi,2)/((*T00)(xvi) + (*T00)(xvi+2));
     }
+}
+
+
+void compute_norm2_vR(
+		      Field<Real> &vR,
+		      Field<Real> &norm2_vR
+		      )
+{
+  Site x(vR.lattice());
+  for(x.first(); x.test(); x.next()){
+    (norm2_vR)(x) = pow((vR)(x, 0), 2)+pow((vR)(x, 1), 2)+pow((vR)(x, 2), 2);
+  }
+}
+
+void compute_norm_w(
+		    Field<Real> &vR,
+		    Field<Real> &norm2_vR
+		    )
+{
+  Site x(vR.lattice());
+  for(x.first(); x.test(); x.next()){
+    (norm2_vR)(x) = sqrt(vR(x));
+  }
+}
+
+void compute_laplacianFT(
+			 Field<Cplx> &source_scalar,
+			 Field<Cplx> &dest_scalar
+			 )
+{
+  const int linesize = source_scalar.lattice().size(1);
+  int i;
+  Real *gridk2;
+  rKSite k(source_scalar.lattice());
+
+  gridk2 = (Real *) malloc(linesize * sizeof(Real));
+
+  double coeff = ((long) linesize * (long) linesize * (long) linesize);
+
+  for (i = 0; i < linesize; i++)
+    {
+      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      gridk2[i] *= gridk2[i];
+    }
+
+  k.first();
+  if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)
+    {
+      dest_scalar(k) = Cplx(0.,0.);
+      k.next();
+    }
+
+  for (; k.test(); k.next())
+    {
+      dest_scalar(k) = source_scalar(k) * coeff *(gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)]);
+    }
+
+  free(gridk2);
 }
 
 
