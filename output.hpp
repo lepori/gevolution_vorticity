@@ -59,7 +59,7 @@ using namespace std;
 // 
 //////////////////////////
 
-void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gadget2_header & hdr, const double a, const int snapcount, string h5filename, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Real> * th, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, Field<Cplx> * thFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij, PlanFFT<Cplx> * plan_th, Field<Real> * Bi_check = NULL, Field<Cplx> * BiFT_check = NULL, PlanFFT<Cplx> * plan_Bi_check = NULL)
+void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gadget2_header & hdr, const double a, const int snapcount, string h5filename, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_cdm, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_b, Particles_gevolution<part_simple,part_simple_info,part_simple_dataType> * pcls_ncdm, Field<Real> * phi, Field<Real> * chi, Field<Real> * Bi, Field<Real> * source, Field<Real> * Sij, Field<Real> * th, Field<Real> *norm_w, Field<Cplx> * scalarFT, Field<Cplx> * BiFT, Field<Cplx> * SijFT, Field<Cplx> * thFT, Field<Cplx> *norm_wFT, PlanFFT<Cplx> * plan_phi, PlanFFT<Cplx> * plan_chi, PlanFFT<Cplx> * plan_Bi, PlanFFT<Cplx> * plan_source, PlanFFT<Cplx> * plan_Sij, PlanFFT<Cplx> * plan_th, PlanFFT<Cplx> *plan_norm_w, Field<Real> * Bi_check = NULL, Field<Cplx> * BiFT_check = NULL, PlanFFT<Cplx> * plan_Bi_check = NULL)
 {
 	char filename[2*PARAM_MAX_LENGTH+24];
 	char buffer[64];
@@ -96,9 +96,10 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 	if (sim.out_snapshot & MASK_CHI)
 		chi->saveHDF5_server_open(h5filename + filename + "_chi");
 	
-	if (sim.out_snapshot & MASK_VORT)
+	if (sim.out_snapshot & MASK_VORT){
 	  th->saveHDF5_server_open(h5filename + filename + "_th");
-
+	  norm_w->saveHDF5_server_open(h5filename + filename + "_w");
+	}
 	if (sim.out_snapshot & MASK_HIJ)
 		Sij->saveHDF5_server_open(h5filename + filename + "_hij");
 				
@@ -222,21 +223,25 @@ void writeSnapshots(metadata & sim, cosmology & cosmo, const double fourpiG, gad
 #endif
 			
 		if (sim.out_snapshot & MASK_VORT){
+                  /*
 		  for (x.first(); x.test(); x.next())
 		    {
 		      (*th)(x) /= a * sim.boxsize;
-		      (*th)(x) /= a * sim.boxsize;
-		      (*th)(x) /= a * sim.boxsize;
+                      (*norm_w)(x) /= a * sim.boxsize;  
 		    }
 		  th->updateHalo();
+                  norm_w->updateHalo();*/
+                  
 #ifdef EXTERNAL_IO
 		  th->saveHDF5_server_write(NUMBER_OF_IO_FILES);
+		  norm_w->saveHDF5_server_write(NUMBER_OF_IO_FILES);
 #else
-                if (sim.downgrade_factor > 1)
+		  if (sim.downgrade_factor > 1){
 		  th->saveHDF5_coarseGrain3D(h5filename + filename + "_th.h5", sim.downgrade_factor);
-                else
+		  norm_w->saveHDF5_coarseGrain3D(h5filename + filename + "_w.h5", sim.downgrade_factor);}
+		  else{
 		  th->saveHDF5(h5filename + filename + "_th.h5");
-
+		  norm_w->saveHDF5(h5filename + filename + "_w.h5");}
 #endif
 }	
 	if (sim.out_snapshot & MASK_HIJ)
@@ -780,13 +785,13 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
 		  {
                     extractPowerSpectrum(*viFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
 		    sprintf(filename, "%s%s%03d_vi.dat", sim.output_path, sim.basename_pk, pkcount);
-		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of vi", a);
+		    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of vi", a);
                     extractPowerSpectrum(*vRFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
                     sprintf(filename, "%s%s%03d_vR.dat", sim.output_path, sim.basename_pk, pkcount);
-                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of vR", a);
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of vR", a);
                     extractPowerSpectrum(*thFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
                     sprintf(filename, "%s%s%03d_th.dat", sim.output_path, sim.basename_pk, pkcount);
-                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * a * a * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of th", a);  
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of th", a);  
 
 
 		  }

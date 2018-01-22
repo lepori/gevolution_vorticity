@@ -1,4 +1,3 @@
-
 /////////////////////////
 // vorticity.hpp
 //////////////////////////
@@ -854,11 +853,6 @@ void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
 
 void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> * Ti0 = NULL)
 {
-
-  //  Real  localCubePhi[8];
-  //Real  localCubeChi[8];
-  //Real  localCubeT00[8];
-  //Real  localEdgeTi0[12];  
   
   Site xvi(vi->lattice());
       
@@ -1212,44 +1206,6 @@ void convolve_field(Field<Cplx> * fieldFT_conv, Field<Cplx> * fieldFT, int dim_f
 
 }
 
-
-//////////////////////////                                                                                                          
-// compute_Ti0 
-//////////////////////////                                                                                                        
-// Description:                                                                                                                      
-//   Compute T^i_0 from T^0_i
-//                                                                                                                                     
-// Arguments:                                                                                                                         
-//   Ti0        reference to the field Ti0 = a^4 T^i_0
-//   Bi         reference to the field Bi (a^4 T^0_i)                                                                            
-//   phi        reference to the field phi                                                                                       
-//   chi        reference to the field chi                                                                                    
-//
-// Returns:                                                                                                                            
-//                                                                                                                                
-//////////////////////////
-
-void compute_Ti0(Field<Real> * Ti0, Field<Real> * Bi = NULL, Field<Real> * phi = NULL, Field<Real> * chi = NULL)
-{
-
-  Real  localEdgeTi0[12];
-
-  Site x(Ti0->lattice());
-
-  for(x.first(); x.test(); x.next())
-    {
-      if (Bi != NULL && phi != NULL && chi != NULL)
-        {
-
-          (*Ti0)(x,0) = (*Bi)(x,0)*(1. + 2.*((*phi)(x) + (*phi)(x+0)) + (*chi)(x) + (*chi)(x+0));
-          (*Ti0)(x,1) = (*Bi)(x,1)*(1. + 2.*((*phi)(x) + (*phi)(x+1)) + (*chi)(x) + (*chi)(x+1));
-          (*Ti0)(x,2) = (*Bi)(x,2)*(1. + 2.*((*phi)(x) + (*phi)(x+2)) + (*chi)(x) + (*chi)(x+2));
-
-        }
-    }
-}
-
-
 //////////////////////////                                                                                     
 // compute_velocity_smooth
 //////////////////////////                                                                                     
@@ -1271,9 +1227,9 @@ void compute_velocity_smooth(Field<Real> * vi, Field<Real> * Ti0 = NULL, Field<R
       
   for(xvi.first(); xvi.test(); xvi.next())
     {  
-      (*vi)(xvi,0) = 2.*(*Ti0)(xvi,0)/((*T00)(xvi) + (*T00)(xvi+0));
-      (*vi)(xvi,1) = 2.*(*Ti0)(xvi,1)/((*T00)(xvi) + (*T00)(xvi+1));
-      (*vi)(xvi,2) = 2.*(*Ti0)(xvi,2)/((*T00)(xvi) + (*T00)(xvi+2));
+      (*vi)(xvi,0) = (*Ti0)(xvi,0)/(*T00)(xvi);
+      (*vi)(xvi,1) = (*Ti0)(xvi,1)/(*T00)(xvi);
+      (*vi)(xvi,2) = (*Ti0)(xvi,2)/(*T00)(xvi);
     }
 }
 
@@ -1296,7 +1252,7 @@ void compute_norm_w(
 {
   Site x(vR.lattice());
   for(x.first(); x.test(); x.next()){
-    (norm2_vR)(x) = sqrt(vR(x));
+    (norm2_vR)(x) = sqrt(abs(vR(x)));
   }
 }
 
@@ -1316,7 +1272,7 @@ void compute_laplacianFT(
 
   for (i = 0; i < linesize; i++)
     {
-      gridk2[i] = 2. * (Real) linesize * sin(M_PI * (Real) i / (Real) linesize);
+      gridk2[i] = (Real) linesize * sin(M_PI * 2.0 * (Real) i / (Real) linesize);
       gridk2[i] *= gridk2[i];
     }
 

@@ -226,6 +226,7 @@ int main(int argc, char **argv)
         Field<Real> vi_past;
         Field<Real> vR;
         Field<Real> th;
+	Field<Real> norm_w;
 	Field<Cplx> scalarFT;
 	Field<Cplx> T00FT;
         Field<Cplx> count_partFT;
@@ -236,22 +237,25 @@ int main(int argc, char **argv)
         Field<Cplx> Ti0FT;
         Field<Cplx> vRFT;
         Field<Cplx> thFT; 	
-
+	Field<Cplx> norm_wFT;
 
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
         th.initialize(lat,1);
+	norm_w.initialize(lat,1);
         T00.initialize(lat,1);
         count_part.initialize(lat,1);
 	scalarFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
+        norm_wFT.initialize(latFT,1);
         T00FT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
+        PlanFFT<Cplx> plan_norm_w(&norm_w, &norm_wFT);
 	PlanFFT<Cplx> plan_T00(&T00, &T00FT);
         PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
 	Sij.initialize(lat,3,3,symmetric);
@@ -497,7 +501,6 @@ int main(int argc, char **argv)
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_SMOOTH && 1. / a < sim.z_pk[pkcount] + 1.)
 		  {
-		    //compute_Ti0(&Ti0, &Bi);
 		    plan_Ti0.execute(FFT_FORWARD);
                     plan_source.execute(FFT_FORWARD);
                     convolve_field(&Ti0FT, &Ti0FT, 3, sim.sigma);
@@ -737,12 +740,24 @@ int main(int argc, char **argv)
 		// snapshot output
 		if (snapcount < sim.num_snapshot && 1. / a < sim.z_snapshot[snapcount] + 1.)
 		{
+
+		  if (sim.out_snapshot & MASK_VORT){
+		    compute_norm2_vR(vR, norm_w);
+		    plan_norm_w.execute(FFT_FORWARD);
+		    compute_laplacianFT(norm_wFT, norm_wFT);
+		    plan_norm_w.execute(FFT_BACKWARD);
+		    compute_norm_w(norm_w, norm_w);
+		    plan_norm_w.execute(FFT_FORWARD);
+		    plan_norm_w.execute(FFT_BACKWARD); 
+		  }
+
+
 			COUT << COLORTEXT_CYAN << " writing snapshot" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &scalarFT, &BiFT, &SijFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w, &Bi_check, &BiFT_check, &plan_Bi_check);
 #else
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &scalarFT, &BiFT, &SijFT, &thFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w);
 #endif
 
 			snapcount++;
