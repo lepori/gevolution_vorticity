@@ -824,7 +824,7 @@ void projectFTvelocityTh(Field<Cplx> & thFT, Field<Cplx> & viFT)
 
   for (k.first(); k.test(); k.next())
     {
-      thFT(k) = (gridk[k.coord(0)] * viFT(k, 0) + 
+      thFT(k) = Cplx(0.,1.)*(gridk[k.coord(0)] * viFT(k, 0) + 
                  gridk[k.coord(1)] * viFT(k, 1) + 
                  gridk[k.coord(2)] * viFT(k, 2) );
     }
