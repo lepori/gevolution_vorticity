@@ -793,6 +793,10 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
                     sprintf(filename, "%s%s%03d_th.dat", sim.output_path, sim.basename_pk, pkcount);
                     writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * sim.boxsize * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of th", a);  
 
+		    extractCrossSpectrum(*thFT,*scalarFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, false, KTYPE_LINEAR);
+                    sprintf(filename, "%s%s%03d_thdelta.dat", sim.output_path, sim.basename_pk, pkcount);
+                    writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize, sim.boxsize * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI * (cosmo.Omega_cdm + cosmo.Omega_b + bg_ncdm(a, cosmo)), filename, "power spectrum of th", a);
+
 
 		  }
 
