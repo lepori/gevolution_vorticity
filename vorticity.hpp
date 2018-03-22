@@ -1235,26 +1235,54 @@ void compute_velocity_smooth(Field<Real> * vi, Field<Real> * Ti0 = NULL, Field<R
 
 
 void compute_norm2_vR(
-		      Field<Real> &vR,
-		      Field<Real> &norm2_vR
+		      Field<Real> * vR,
+		      Field<Real> * norm_vR2
 		      )
 {
-  Site x(vR.lattice());
+  Site x(norm_vR2->lattice());
   for(x.first(); x.test(); x.next()){
-    (norm2_vR)(x) = pow((vR)(x, 0), 2)+pow((vR)(x, 1), 2)+pow((vR)(x, 2), 2);
+    (*norm_vR2)(x) = pow((*vR)(x, 0),2)+ pow((*vR)(x, 1),2)+ pow((*vR)(x, 2),2);
   }
 }
 
-void compute_norm_w(
+void compute_norm_w_old(
 		    Field<Real> &vR,
 		    Field<Real> &norm2_vR
 		    )
 {
   Site x(vR.lattice());
   for(x.first(); x.test(); x.next()){
-    (norm2_vR)(x) = sqrt(abs(vR(x)));
+    (norm2_vR)(x) = vR(x,0)* vR(x,0) + vR(x,1)* vR(x,1) + vR(x,2)* vR(x,2);
   }
 }
+
+void compute_norm_w(
+                    Field<Real> * norm2_vR,
+                    Field<Real> * norm_w
+                    )
+{
+  Site x(norm_w->lattice());
+  for(x.first(); x.test(); x.next()){
+    (*norm_w)(x) = 8.0*(*norm2_vR)(x)-((*norm2_vR)(x-0-1-2) + (*norm2_vR)(x-0-1+2) + (*norm2_vR)(x-0+1-2) + (*norm2_vR)(x+0-1-2) + \
+				       (*norm2_vR)(x-0+1+2) + (*norm2_vR)(x+0-1+2) + (*norm2_vR)(x+0+1-2) + (*norm2_vR)(x+0+1+2) );
+    (*norm_w)(x) = sqrt(abs( (*norm_w)(x) ));
+
+  }
+}
+
+
+void compute_v2(             
+		    Field<Real> * v2,
+                    Field<Real> * vi
+                    )
+{
+  Site x(v2->lattice());
+  for(x.first(); x.test(); x.next()){
+    (*v2)(x) = (*vi)(x,0)*(*vi)(x,0)+(*vi)(x,1)*(*vi)(x,1)+(*vi)(x,2)*(*vi)(x,2) ;
+  }
+}
+
+
 
 void compute_laplacianFT(
 			 Field<Cplx> &source_scalar,
@@ -1276,16 +1304,9 @@ void compute_laplacianFT(
       gridk2[i] *= gridk2[i];
     }
 
-  k.first();
-  if (k.coord(0) == 0 && k.coord(1) == 0 && k.coord(2) == 0)
+  for (k.first(); k.test(); k.next())
     {
-      dest_scalar(k) = Cplx(0.,0.);
-      k.next();
-    }
-
-  for (; k.test(); k.next())
-    {
-      dest_scalar(k) = source_scalar(k) * coeff *(gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)]);
+      dest_scalar(k) = -source_scalar(k) * coeff *(gridk2[k.coord(0)] + gridk2[k.coord(1)] + gridk2[k.coord(2)]);
     }
 
   free(gridk2);

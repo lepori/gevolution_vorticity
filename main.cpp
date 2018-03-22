@@ -111,11 +111,11 @@ int main(int argc, char **argv)
 	icsettings ic;
 	gadget2_header hdr;
 	Real T00hom;
-        Real sigma0;
-        Real tot_count;
-        Real a_past = 1.;
-        long Nempty;
-        int subvel_counter = 1;
+    Real sigma0;
+    Real tot_count;
+    Real a_past = 1.;
+    long Nempty;
+    int subvel_counter = 1;
 
 #ifndef H5_DEBUG
 	H5Eset_auto2 (H5E_DEFAULT, NULL, NULL);
@@ -215,49 +215,60 @@ int main(int argc, char **argv)
 
 	Field<Real> phi;
 	Field<Real> source;
-        Field<Real> count_part;
-
+	Field<Real> count_part;
 	Field<Real> chi;
-        Field<Real> T00;
+	Field<Real> T00;
 	Field<Real> Sij;
 	Field<Real> Bi;
-        Field<Real> Ti0;
-        Field<Real> vi;
-        Field<Real> vi_past;
-        Field<Real> vR;
-        Field<Real> th;
+	Field<Real> Ti0;
+	Field<Real> vi;
+	Field<Real> vi_past;
+	Field<Real> vR;
+	Field<Real> th;
+        Field<Real> norm_vR2;
 	Field<Real> norm_w;
+        Field<Real> sigma2;
 	Field<Cplx> scalarFT;
+	Field<Cplx> sigma2FT;
 	Field<Cplx> T00FT;
-        Field<Cplx> count_partFT;
+	Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
 	Field<Cplx> BiFT;
-        Field<Cplx> viFT;
-        Field<Cplx> vi_pastFT;
-        Field<Cplx> Ti0FT;
-        Field<Cplx> vRFT;
-        Field<Cplx> thFT; 	
+	Field<Cplx> viFT;
+	Field<Cplx> vi_pastFT;
+	Field<Cplx> Ti0FT;
+	Field<Cplx> vRFT;
+	Field<Cplx> thFT; 	
 	Field<Cplx> norm_wFT;
+	Field<Cplx> norm_vR2FT;
 
 	source.initialize(lat,1);
 	phi.initialize(lat,1);
 	chi.initialize(lat,1);
         th.initialize(lat,1);
+        norm_vR2.initialize(lat,1);
 	norm_w.initialize(lat,1);
         T00.initialize(lat,1);
         count_part.initialize(lat,1);
+        sigma2.initialize(lat, 1);
 	scalarFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
         norm_wFT.initialize(latFT,1);
+        norm_vR2FT.initialize(latFT,1);
         T00FT.initialize(latFT,1);
+        sigma2FT.initialize(latFT,1);
+
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
         PlanFFT<Cplx> plan_th(&th, &thFT);
         PlanFFT<Cplx> plan_norm_w(&norm_w, &norm_wFT);
+        PlanFFT<Cplx> plan_norm_vR2(&norm_vR2, &norm_vR2FT);
 	PlanFFT<Cplx> plan_T00(&T00, &T00FT);
         PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
+        PlanFFT<Cplx> plan_sigma2(&sigma2, &sigma2FT);
+
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
 	PlanFFT<Cplx> plan_Sij(&Sij, &SijFT);
@@ -516,7 +527,14 @@ int main(int argc, char **argv)
                     compute_vi_zero(&vi, &source, &Ti0);
                   }
 
-                
+                //// Compute the velocity field squared
+                vi.updateHalo();  
+                projection_init(&sigma2);
+		projection_sigma2_project(&pcls_cdm, &sigma2, a, &vi, 1.0);
+                projection_sigma2_comm(&sigma2);
+                sigma2.updateHalo();
+
+
 		projection_init(&Sij);
 		projection_Tij_project(&pcls_cdm, &Sij, a, &phi);
 		if (sim.baryon_flag)
@@ -542,7 +560,8 @@ int main(int argc, char **argv)
                         sigma0 = 0.;
 			for (x.first(); x.test(); x.next())
 			  {T00hom += source(x);
-			   sigma0 += (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.; 
+			   sigma0 += (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.;
+                           //sigmaV(x) = (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.; 
                            }
 			parallel.sum<Real>(T00hom);
                         parallel.sum<Real>(sigma0);
@@ -614,6 +633,7 @@ int main(int argc, char **argv)
 		    plan_vi.execute(FFT_FORWARD); //FFT for the velocity field                                           
 		    plan_th.execute(FFT_FORWARD);
 		    plan_vR.execute(FFT_FORWARD);
+		    plan_sigma2.execute(FFT_FORWARD);
 
 		    if(sim.subvel_flag == SUB_VEL)
 		      {
@@ -628,9 +648,11 @@ int main(int argc, char **argv)
 		    plan_vi.execute(FFT_BACKWARD);
 		    plan_vR.execute(FFT_BACKWARD);
 		    plan_th.execute(FFT_BACKWARD);
+		    plan_sigma2.execute(FFT_BACKWARD);
                     th.updateHalo();
                     vR.updateHalo();
 		    vi.updateHalo();
+                    sigma2.updateHalo();
  		  }
 
 		// record some background data
@@ -742,22 +764,23 @@ int main(int argc, char **argv)
 		{
 
 		  if (sim.out_snapshot & MASK_VORT){
-		    compute_norm2_vR(vR, norm_w);
-		    plan_norm_w.execute(FFT_FORWARD);
-		    compute_laplacianFT(norm_wFT, norm_wFT);
-		    plan_norm_w.execute(FFT_BACKWARD);
-		    compute_norm_w(norm_w, norm_w);
-		    plan_norm_w.execute(FFT_FORWARD);
-		    plan_norm_w.execute(FFT_BACKWARD); 
+                    
+		    compute_norm2_vR(&vR, &norm_vR2);
+                    norm_vR2.updateHalo();
+                    
+		    //plan_norm_w.execute(FFT_FORWARD);
+		    //compute_laplacianFT(norm_wFT, norm_wFT);
+		    //plan_norm_w.execute(FFT_BACKWARD);
+		    compute_norm_w(&norm_vR2, &norm_w);
 		  }
 
 
 			COUT << COLORTEXT_CYAN << " writing snapshot" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w, &Bi_check, &BiFT_check, &plan_Bi_check);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &sigma2, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &sigma2FT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w, &plan_sigma2, &Bi_check, &BiFT_check, &plan_Bi_check);
 #else
-			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w);
+			writeSnapshots(sim, cosmo, fourpiG, hdr, a, snapcount, h5filename, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &th, &norm_w, &sigma2, &scalarFT, &BiFT, &SijFT, &thFT, &norm_wFT, &sigma2FT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &plan_th, &plan_norm_w, &plan_sigma2);
 #endif
 
 			snapcount++;
@@ -774,9 +797,9 @@ int main(int argc, char **argv)
 			COUT << COLORTEXT_CYAN << " writing power spectra" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
 
 #ifdef CHECK_B			
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR,&vRFT, &plan_vR, &th, &thFT, &plan_th, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR,&vRFT, &plan_vR, &th, &thFT, &plan_th, &sigma2, &sigma2FT, &plan_sigma2, &Bi_check, &BiFT_check, &plan_Bi_check, &vi_check, &viFT_check, &plan_vi_check );
 #else
-			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR, &vRFT, &plan_vR, &th,&thFT, &plan_th);
+			writeSpectra(sim, cosmo, fourpiG, a, pkcount, &pcls_cdm, &pcls_b, pcls_ncdm, &phi, &chi, &Bi, &source, &Sij, &scalarFT, &BiFT, &SijFT, &plan_phi, &plan_chi, &plan_Bi, &plan_source, &plan_Sij, &vi,&viFT, &plan_vi, &vR, &vRFT, &plan_vR, &th,&thFT, &plan_th, &sigma2, &sigma2FT, &plan_sigma2);
 #endif
 
 			pkcount++;

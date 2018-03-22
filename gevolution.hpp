@@ -1267,14 +1267,14 @@ void projection_Tij_project(Particles<part, part_info, part_dataType> * pcls, Fi
 #endif
 
 //////////////////////////
-// projection_T00_project
+// projection_Ti0_project
 //////////////////////////
 // Description:
 //   Particle-mesh projection for T00, including geometric corrections
 // 
 // Arguments:
 //   pcls       pointer to particle handler
-//   T00        pointer to target field
+//   Ti0        pointer to target field
 //   a          scale factor at projection (needed in order to convert
 //              canonical momenta to energies)
 //   phi        pointer to Bardeen potential which characterizes the
@@ -1397,6 +1397,122 @@ void projection_Ti0_project(Particles<part, part_info, part_dataType> * pcls, Fi
 	}  
 }
 
+template<typename part, typename part_info, typename part_dataType>
+void projection_sigma2_project(Particles<part, part_info, part_dataType> * pcls, Field<Real> * sigma2, double a = 1., Field<Real> * vi = NULL, double coeff = 1.)
+{
+  if (sigma2->lattice().halo() == 0)
+    {
+      cout<< "projection_sigma2_project: target field needs halo > 0" << endl;
+      exit(-1);
+    }
+  
+  Site xPart(pcls->lattice());
+  Site xField(sigma2->lattice());
+  
+  typename std::list<part>::iterator it;
+  
+  Real referPos[3];
+  Real weightScalarGridUp[3];
+  Real weightScalarGridDown[3];
+  Real dx = pcls->res();
+  
+  Real * q;
+  size_t offset_q = offsetof(part,vel);
+  
+  Real localCube[8]; // XYZ = 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111
+  Real localWeight[8];
+
+
+  for (xPart.first(), xField.first(); xPart.test(); xPart.next(), xField.next())
+    {  
+      if (pcls->field()(xPart).size != 0)
+	{
+	  for(int i = 0; i < 3; i++) referPos[i] = xPart.coord(i)*dx;
+	  for(int i = 0; i < 8; i++) localCube[i] = 0.0;
+	  for(int i = 0; i < 8; i++) localWeight[i] = 0.0; 
+
+	  
+	  for (it = (pcls->field())(xPart).parts.begin(); it != (pcls->field())(xPart).parts.end(); ++it)
+	    {
+	      for (int i = 0; i < 3; i++)
+		{
+		  weightScalarGridUp[i] = ((*it).pos[i] - referPos[i]) / dx;
+		  weightScalarGridDown[i] = 1.0l - weightScalarGridUp[i];
+		}
+	      
+	      if (vi != NULL)
+		{
+		  q = (Real*)((char*)&(*it)+offset_q);
+		  //vdiff2 = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+		}
+	      //000
+	      localWeight[0] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridDown[2];
+	      localCube[0] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridDown[2]* 
+		( (q[0] - (*vi)(xField,0))*(q[0] - (*vi)(xField,0)) +  
+		  (q[1] - (*vi)(xField,1))*(q[1] - (*vi)(xField,1)) +  
+		  (q[2] - (*vi)(xField,2))*(q[2] - (*vi)(xField,2))  );
+	      //001
+	      localWeight[1] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
+	      localCube[1] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridUp[2]* 
+		( (q[0] - (*vi)(xField+2,0))*(q[0] - (*vi)(xField+2,0)) + 
+		  (q[1] - (*vi)(xField+2,1))*(q[1] - (*vi)(xField+2,1)) + 
+		  (q[2] - (*vi)(xField+2,2))*(q[2] - (*vi)(xField+2,2))  );
+	      
+	      //010
+	      localWeight[2] +=  weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridDown[2];
+	      localCube[2] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridDown[2]* 
+		( (q[0] - (*vi)(xField+1,0))*(q[0] - (*vi)(xField+1,0)) +  
+		  (q[1] - (*vi)(xField+1,1))*(q[1] - (*vi)(xField+1,1)) +  
+		  (q[2] - (*vi)(xField+1,2))*(q[2] - (*vi)(xField+1,2))  );
+	      //011
+	      localWeight[3] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridUp[2];
+	      localCube[3] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*    
+		( (q[0] - (*vi)(xField+1+2,0))*(q[0] - (*vi)(xField+1+2,0)) + 
+		  (q[1] - (*vi)(xField+1+2,1))*(q[1] - (*vi)(xField+1+2,1)) + 
+		  (q[2] - (*vi)(xField+1+2,2))*(q[2] - (*vi)(xField+1+2,2))  );
+	      //100
+	      localWeight[4] +=  weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridDown[2];
+	      localCube[4] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridDown[2]*   
+		( (q[0] - (*vi)(xField+0,0))*(q[0] - (*vi)(xField+0,0)) + 
+		  (q[1] - (*vi)(xField+0,1))*(q[1] - (*vi)(xField+0,1)) + 
+		  (q[2] - (*vi)(xField+0,2))*(q[2] - (*vi)(xField+0,2))  );
+	      //101
+	      localWeight[5] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
+	      localCube[5] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2]*    
+		( (q[0] - (*vi)(xField+0+2,0))*(q[0] - (*vi)(xField+0+2,0)) +            
+		  (q[1] - (*vi)(xField+0+2,1))*(q[1] - (*vi)(xField+0+2,1)) +            
+		  (q[2] - (*vi)(xField+0+2,2))*(q[2] - (*vi)(xField+0+2,2))  );
+	      //110
+	      localWeight[6] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
+	      localCube[6] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridDown[2]*    
+		( (q[0] - (*vi)(xField+0+1,0))*(q[0] - (*vi)(xField+0+1,0)) +            
+		  (q[1] - (*vi)(xField+0+1,1))*(q[1] - (*vi)(xField+0+1,1)) +            
+		  (q[2] - (*vi)(xField+0+1,2))*(q[2] - (*vi)(xField+0+1,2))  );
+	      //111
+	      localWeight[7] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridUp[2];
+	      localCube[7] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*      
+		( (q[0] - (*vi)(xField+0+1+2,0))*(q[0] - (*vi)(xField+0+1+2,0)) +   
+		  (q[1] - (*vi)(xField+0+1+2,1))*(q[1] - (*vi)(xField+0+1+2,1)) +  
+		  (q[2] - (*vi)(xField+0+1+2,2))*(q[2] - (*vi)(xField+0+1+2,2))  );
+	    }
+	  
+	  (*sigma2)(xField)       += localCube[0]/localWeight[0];
+	  (*sigma2)(xField+2)     += localCube[1]/localWeight[1];
+	  (*sigma2)(xField+1)     += localCube[2]/localWeight[2];
+	  (*sigma2)(xField+1+2)   += localCube[3]/localWeight[3];
+	  (*sigma2)(xField+0)     += localCube[4]/localWeight[4];
+	  (*sigma2)(xField+0+2)   += localCube[5]/localWeight[5];
+	  (*sigma2)(xField+0+1)   += localCube[6]/localWeight[6];
+	  (*sigma2)(xField+0+1+2) += localCube[7]/localWeight[7];
+	}
+    }  
+}
+
+
+#define projection_sigma2_comm scalarProjectionCIC_comm
+
 
 #endif
+
+
 
