@@ -228,8 +228,10 @@ int main(int argc, char **argv)
         Field<Real> norm_vR2;
 	Field<Real> norm_w;
         Field<Real> sigma2;
+	Field<Real> weight;
 	Field<Cplx> scalarFT;
 	Field<Cplx> sigma2FT;
+        Field<Cplx> weightFT;
 	Field<Cplx> T00FT;
 	Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
@@ -251,6 +253,7 @@ int main(int argc, char **argv)
         T00.initialize(lat,1);
         count_part.initialize(lat,1);
         sigma2.initialize(lat, 1);
+	weight.initialize(lat, 1);
 	scalarFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
@@ -258,6 +261,7 @@ int main(int argc, char **argv)
         norm_vR2FT.initialize(latFT,1);
         T00FT.initialize(latFT,1);
         sigma2FT.initialize(latFT,1);
+	weightFT.initialize(latFT,1);
 
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
@@ -268,6 +272,7 @@ int main(int argc, char **argv)
 	PlanFFT<Cplx> plan_T00(&T00, &T00FT);
         PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
         PlanFFT<Cplx> plan_sigma2(&sigma2, &sigma2FT);
+	PlanFFT<Cplx> plan_weight(&weight, &weightFT);
 
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
@@ -530,7 +535,7 @@ int main(int argc, char **argv)
                 //// Compute the velocity field squared
                 vi.updateHalo();  
                 projection_init(&sigma2);
-		projection_sigma2_project(&pcls_cdm, &sigma2, a, &vi, 1.0);
+		projection_sigma2_project(&pcls_cdm, &sigma2, &weight, a, &vi, 1.0);
                 projection_sigma2_comm(&sigma2);
                 sigma2.updateHalo();
 
