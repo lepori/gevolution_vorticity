@@ -535,7 +535,7 @@ int main(int argc, char **argv)
                 //// Compute the velocity field squared
                 vi.updateHalo();  
                 projection_init(&sigma2);
-		projection_sigma2_project(&pcls_cdm, &sigma2, &weight, a, &vi, 1.0);
+		projection_sigma2_project(&pcls_cdm, &sigma2, &weight, a, &vi, &phi, 1.0);
                 projection_sigma2_comm(&sigma2);
                 sigma2.updateHalo();
                 weight.updateHalo();
