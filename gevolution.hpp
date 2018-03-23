@@ -1419,11 +1419,12 @@ void projection_sigma2_project(Particles<part, part_info, part_dataType> * pcls,
   Real * q;
   size_t offset_q = offsetof(part,vel);
   
+
   Real localCube[8]; // XYZ = 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111
   Real localWeight[8];
 
   Real q2;
-
+  Real e;
   for (xPart.first(), xField.first(); xPart.test(); xPart.next(), xField.next())
     {  
       if (pcls->field()(xPart).size != 0)
@@ -1444,57 +1445,58 @@ void projection_sigma2_project(Particles<part, part_info, part_dataType> * pcls,
 	      if (vi != NULL)
 		{
 		  q = (Real*)((char*)&(*it)+offset_q);
-		  q2 = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+		  q2 = q[0] * q[0] + q[1] * q[1] + q[2] * q[2];
+		  e = sqrt(q2 + a * a);
 		}
               
 	      localWeight[0] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridDown[2];
 	      localCube[0] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridDown[2]* 
-		      ( (q[0] - (*vi)(xField,0))*(q[0] - (*vi)(xField,0)) +  
-			(q[1] - (*vi)(xField,1))*(q[1] - (*vi)(xField,1)) +  
-			(q[2] - (*vi)(xField,2))*(q[2] - (*vi)(xField,2))  );
+		      ( (q[0]/e - (*vi)(xField,0))*(q[0]/e - (*vi)(xField,0)) +  
+			(q[1]/e - (*vi)(xField,1))*(q[1]/e - (*vi)(xField,1)) +  
+			(q[2]/e - (*vi)(xField,2))*(q[2]/e - (*vi)(xField,2))  );
 		    //001
 	      localWeight[1] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
 	      localCube[1] += weightScalarGridDown[0]*weightScalarGridDown[1]*weightScalarGridUp[2]* 
-		      ( (q[0] - (*vi)(xField+2,0))*(q[0] - (*vi)(xField+2,0)) + 
-		        (q[1] - (*vi)(xField+2,1))*(q[1] - (*vi)(xField+2,1)) + 
-			(q[2] - (*vi)(xField+2,2))*(q[2] - (*vi)(xField+2,2))  );
+		      ( (q[0]/e - (*vi)(xField+2,0))*(q[0]/e - (*vi)(xField+2,0)) + 
+		        (q[1]/e - (*vi)(xField+2,1))*(q[1]/e - (*vi)(xField+2,1)) + 
+			(q[2]/e - (*vi)(xField+2,2))*(q[2]/e - (*vi)(xField+2,2))  );
 			        
 			  //010
 	      localWeight[2] +=  weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridDown[2];
 	      localCube[2] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridDown[2]* 
-		      ( (q[0] - (*vi)(xField+1,0))*(q[0] - (*vi)(xField+1,0)) +  
-			(q[1] - (*vi)(xField+1,1))*(q[1] - (*vi)(xField+1,1)) +  
-			(q[2] - (*vi)(xField+1,2))*(q[2] - (*vi)(xField+1,2))  );
+		      ( (q[0]/e - (*vi)(xField+1,0))*(q[0]/e - (*vi)(xField+1,0)) +  
+			(q[1]/e - (*vi)(xField+1,1))*(q[1]/e - (*vi)(xField+1,1)) +  
+			(q[2]/e - (*vi)(xField+1,2))*(q[2]/e - (*vi)(xField+1,2))  );
 				//011
 	      localWeight[3] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridUp[2];
 	      localCube[3] += weightScalarGridDown[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*    
-		      ( (q[0] - (*vi)(xField+1+2,0))*(q[0] - (*vi)(xField+1+2,0)) + 
-			(q[1] - (*vi)(xField+1+2,1))*(q[1] - (*vi)(xField+1+2,1)) + 
-			(q[2] - (*vi)(xField+1+2,2))*(q[2] - (*vi)(xField+1+2,2))  );
+		      ( (q[0]/e - (*vi)(xField+1+2,0))*(q[0]/e - (*vi)(xField+1+2,0)) + 
+			(q[1]/e - (*vi)(xField+1+2,1))*(q[1]/e - (*vi)(xField+1+2,1)) + 
+			(q[2]/e - (*vi)(xField+1+2,2))*(q[2]/e - (*vi)(xField+1+2,2))  );
 				      //100
 	      localWeight[4] +=  weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridDown[2];
 	      localCube[4] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridDown[2]*   
-		      ( (q[0] - (*vi)(xField+0,0))*(q[0] - (*vi)(xField+0,0)) + 
-			(q[1] - (*vi)(xField+0,1))*(q[1] - (*vi)(xField+0,1)) + 
-			(q[2] - (*vi)(xField+0,2))*(q[2] - (*vi)(xField+0,2))  );
+		      ( (q[0]/e - (*vi)(xField+0,0))*(q[0]/e - (*vi)(xField+0,0)) + 
+			(q[1]/e - (*vi)(xField+0,1))*(q[1]/e - (*vi)(xField+0,1)) + 
+			(q[2]/e - (*vi)(xField+0,2))*(q[2]/e - (*vi)(xField+0,2))  );
 					    //101
 	      localWeight[5] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
 	      localCube[5] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2]*    
-		( (q[0] - (*vi)(xField+0+2,0))*(q[0] - (*vi)(xField+0+2,0)) +            
-		  (q[1] - (*vi)(xField+0+2,1))*(q[1] - (*vi)(xField+0+2,1)) +            
-		  (q[2] - (*vi)(xField+0+2,2))*(q[2] - (*vi)(xField+0+2,2))  );
+		( (q[0]/e - (*vi)(xField+0+2,0))*(q[0]/e - (*vi)(xField+0+2,0)) +            
+		  (q[1]/e - (*vi)(xField+0+2,1))*(q[1]/e - (*vi)(xField+0+2,1)) +            
+		  (q[2]/e - (*vi)(xField+0+2,2))*(q[2]/e - (*vi)(xField+0+2,2))  );
 	      //110
 	      localWeight[6] += weightScalarGridUp[0]*weightScalarGridDown[1]*weightScalarGridUp[2];
 	      localCube[6] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridDown[2]*    
-		( (q[0] - (*vi)(xField+0+1,0))*(q[0] - (*vi)(xField+0+1,0)) +            
-		  (q[1] - (*vi)(xField+0+1,1))*(q[1] - (*vi)(xField+0+1,1)) +            
-		  (q[2] - (*vi)(xField+0+1,2))*(q[2] - (*vi)(xField+0+1,2))  );
+		( (q[0]/e - (*vi)(xField+0+1,0))*(q[0]/e - (*vi)(xField+0+1,0)) +            
+		  (q[1]/e - (*vi)(xField+0+1,1))*(q[1]/e - (*vi)(xField+0+1,1)) +            
+		  (q[2]/e - (*vi)(xField+0+1,2))*(q[2]/e - (*vi)(xField+0+1,2))  );
 	      //111
 	      localWeight[7] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridUp[2];
 	      localCube[7] += weightScalarGridUp[0]*weightScalarGridUp[1]*weightScalarGridUp[2]*      
-		( (q[0] - (*vi)(xField+0+1+2,0))*(q[0] - (*vi)(xField+0+1+2,0)) +   
-		  (q[1] - (*vi)(xField+0+1+2,1))*(q[1] - (*vi)(xField+0+1+2,1)) +  
-		  (q[2] - (*vi)(xField+0+1+2,2))*(q[2] - (*vi)(xField+0+1+2,2))  );
+		( (q[0]/e - (*vi)(xField+0+1+2,0))*(q[0]/e - (*vi)(xField+0+1+2,0)) +   
+		  (q[1]/e - (*vi)(xField+0+1+2,1))*(q[1]/e - (*vi)(xField+0+1+2,1)) +  
+		  (q[2]/e - (*vi)(xField+0+1+2,2))*(q[2]/e - (*vi)(xField+0+1+2,2))  );
 	    }
 
 	  (*sigma2)(xField)       += localCube[0];

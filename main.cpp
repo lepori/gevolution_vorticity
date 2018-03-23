@@ -538,6 +538,7 @@ int main(int argc, char **argv)
 		projection_sigma2_project(&pcls_cdm, &sigma2, &weight, a, &vi, 1.0);
                 projection_sigma2_comm(&sigma2);
                 sigma2.updateHalo();
+                weight.updateHalo();
 
 
 		projection_init(&Sij);
