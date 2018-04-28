@@ -860,46 +860,6 @@ void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
     {  
 
 
-      /*
-      for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
-      for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
-      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
-
-      if (chi != NULL)
-	{
-	  localCubeChi[0] = (*chi)(xvi);
-	  localCubeChi[1] = (*chi)(xvi+2);
-	  localCubeChi[2] = (*chi)(xvi+1);
-	  localCubeChi[4] = (*chi)(xvi+0);
-	}
-
-      if (phi != NULL)
-        {
-          localCubePhi[0] = (*phi)(xvi);
-          localCubePhi[1] = (*phi)(xvi+2);
-          localCubePhi[2] = (*phi)(xvi+1);
-          localCubePhi[4] = (*phi)(xvi+0);
-        }
-
-      if (source != NULL)                                                                                                                
-        {                                                                                                                                
-          localCubeT00[0] = (*source)(xvi);                                                          
-          localCubeT00[1] = (*source)(xvi+2);
-	  localCubeT00[2] = (*source)(xvi+1);
-	  localCubeT00[4] = (*source)(xvi+0);
-	}
-  
-      */
-      //      if (Bi != NULL)
-      //  {
-      //
-      //	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
-      //	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
-      //    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
-      //	    
-      //        }
-
       if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= 0.0;}
       else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
 
@@ -908,16 +868,7 @@ void compute_vi_zero(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 
       if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,2)= 0.0;}
       else {(*vi)(xvi,2) = (*Ti0)(xvi,2)/(*source)(xvi);}
-      /*
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)= 0.0;}
-      else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
- 
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) {(*vi)(xvi,1)= 0.0;}
-      else {(*vi)(xvi,1) = 2.*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);}
 
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= 0.0;}
-      else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
-      */
     }
 }
 
@@ -952,45 +903,7 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
       
   for(xvi.first(); xvi.test(); xvi.next())
     {  
-      /*
-      for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
-      for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
-      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
 
-      if (chi != NULL)
-	{
-	  localCubeChi[0] = (*chi)(xvi);
-	  localCubeChi[1] = (*chi)(xvi+2);
-	  localCubeChi[2] = (*chi)(xvi+1);
-	  localCubeChi[4] = (*chi)(xvi+0);
-	}
-
-      if (phi != NULL)
-        {
-          localCubePhi[0] = (*phi)(xvi);
-          localCubePhi[1] = (*phi)(xvi+2);
-          localCubePhi[2] = (*phi)(xvi+1);
-          localCubePhi[4] = (*phi)(xvi+0);
-        }
-
-      if (source != NULL)                                                                                                                
-        {                                                                                                                                
-          localCubeT00[0] = (*source)(xvi);                                                          
-          localCubeT00[1] = (*source)(xvi+2);
-	  localCubeT00[2] = (*source)(xvi+1);
-	  localCubeT00[4] = (*source)(xvi+0);
-	}
-  
-
-      if (Bi != NULL)
-        {
-	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
-	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
-	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
-        }
-
-      */
       if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= (*vi_past)(xvi,0);}
       else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
 
@@ -999,16 +912,7 @@ void compute_vi_past(Field<Real> * vi, Field<Real> * source = NULL, Field<Real> 
 
       if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2);}
       else {(*vi)(xvi,2) = (*Ti0)(xvi,2)/(*source)(xvi);}
-      /*
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)=(*vi_past)(xvi,0);}
-      else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
- 
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1);}
-      else {(*vi)(xvi,1) = 2.*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);}
 
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2);}
-      else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
-      */
     }
 }
 
@@ -1045,54 +949,6 @@ void compute_vi_past_rescaled(cosmology & cosmo, Field<Real> * vi, Field<Real> *
   
   for(xvi.first(); xvi.test(); xvi.next())
     {  
-      /*
-      for (int i = 0; i < 8; i++)  localCubePhi[i]=0.0;
-      for (int i = 0; i < 8; i++)  localCubeChi[i]=0.0;
-      for (int i = 0; i < 12; i++) localEdgeTi0[i] =0.0;
-      for (int i = 0; i < 8; i++)  localCubeT00[i]=0.0;
-
-      if (chi != NULL)
-	{
-	  localCubeChi[0] = (*chi)(xvi);
-	  localCubeChi[1] = (*chi)(xvi+2);
-	  localCubeChi[2] = (*chi)(xvi+1);
-	  localCubeChi[4] = (*chi)(xvi+0);
-	}
-
-      if (phi != NULL)
-        {
-          localCubePhi[0] = (*phi)(xvi);
-          localCubePhi[1] = (*phi)(xvi+2);
-          localCubePhi[2] = (*phi)(xvi+1);
-          localCubePhi[4] = (*phi)(xvi+0);
-        }
-
-      if (source != NULL)                                                                                                                
-        {                                                                                                                                
-          localCubeT00[0] = (*source)(xvi);                                                          
-          localCubeT00[1] = (*source)(xvi+2);
-	  localCubeT00[2] = (*source)(xvi+1);
-	  localCubeT00[4] = (*source)(xvi+0);
-	}
-  
-
-      if (Bi != NULL)
-        {
-	    localEdgeTi0[0] = (*Bi)(xvi,0)*(1. + 2.*(localCubePhi[0] + localCubePhi[4]) + localCubeChi[0] + localCubeChi[4]);
-	    localEdgeTi0[4] = (*Bi)(xvi,1)*(1. + 2.*(localCubePhi[0] + localCubePhi[2]) + localCubeChi[0] + localCubeChi[2]);
-	    localEdgeTi0[8] = (*Bi)(xvi,2)*(1. + 2.*(localCubePhi[0] + localCubePhi[1]) + localCubeChi[0] + localCubeChi[1]);
-        }
-
-
-      if ( (localCubeT00[0] + localCubeT00[4]) < 2.E-300) {(*vi)(xvi,0)=(*vi_past)(xvi,0)*rescale;}
-      else {(*vi)(xvi,0) = 2.*localEdgeTi0[0]/(localCubeT00[0] + localCubeT00[4]);}
- 
-      if ( (localCubeT00[0] + localCubeT00[2]) < 2.E-300) {(*vi)(xvi,1)= (*vi_past)(xvi,1)*rescale;}
-      else {(*vi)(xvi,1) = 2.*localEdgeTi0[4]/(localCubeT00[0] + localCubeT00[2]);}
-
-      if ( (localCubeT00[0] + localCubeT00[1]) < 2.E-300) {(*vi)(xvi,2)= (*vi_past)(xvi,2)*rescale;}
-      else {(*vi)(xvi,2) = 2.*localEdgeTi0[8]/(localCubeT00[0] + localCubeT00[1]);}
-      */
 
       if ( (*source)(xvi) < 1.E-300) {(*vi)(xvi,0)= (*vi_past)(xvi,0)*rescale;}
       else {(*vi)(xvi,0) = (*Ti0)(xvi,0)/(*source)(xvi);}
@@ -1312,5 +1168,57 @@ void compute_laplacianFT(
   free(gridk2);
 }
 
+
+//////////////////////////                                                                                                                    
+// compute_sigma2_rescaled                                                                                                                    
+//////////////////////////                                                                                                                    
+// Description:                                                                                                                              
+//   Compute the trace of the velocity dispertion tensor as sigma2 = -(T^1_1 + T^2_2 + T^3_3) / T^0_0 - <v>^2
+//   If T^0_0 = 0 the velocity dispertion is set to be the one at the previous time step rescaled by linear velocity growth      
+//                                                                                                                                            
+// Arguments:                                                                                                                              
+//   sigma2         reference to the velocity dispertion scalare
+//   source         reference to the field source (a^3 T^0_0)                                                                
+//   Sij            reference to the field Sij (a^3 T^i_j for the diagonal)
+//   vi             reference to the velocity field                                                                     
+//   sigma2_past    reference to the velocity dispertion at the previous time step                                                    
+// Returns:                                                                                                                                   
+//                                                                                                                                            
+//////////////////////////                                                                                                                    
+
+void compute_sigma2_rescaled(cosmology & cosmo, Field<Real> * sigma2, Field<Real> * source = NULL, Field<Real> * Sij = NULL, Field<Real> * vi = NULL, Field<Real> * sigma2_past = NULL, double a = 1., double a_past = 1.)
+{
+
+  Site xsigma(sigma2->lattice());
+
+  Real rescale = D1_prime(cosmo, a)/D1_prime(cosmo, a_past)*a/a_past;
+
+  for(xsigma.first(); xsigma.test(); xsigma.next())
+    {
+
+      if ( (*source)(xsigma) < 1.E-300) {(*sigma2)(xsigma)= (*sigma2_past)(xsigma)*rescale*rescale;}
+      else {(*sigma2)(xsigma) = ((*Sij)(xsigma, 0, 0) + (*Sij)(xsigma, 1, 1) + (*Sij)(xsigma, 2, 2) )/(*source)(xsigma) 
+	  -((*vi)(xsigma,0)*(*vi)(xsigma,0) + (*vi)(xsigma,1)*(*vi)(xsigma,1) + (*vi)(xsigma,2)*(*vi)(xsigma,2));
+           }
+
+    }
+}
+
+
+// Store the velocity field at each time step in vi_past                                                                                        
+void store_sigma2(Field<Real> * sigma2_past, Field<Real> * sigma2 = NULL)
+{
+  Site x(sigma2_past->lattice());
+
+  if (sigma2 != NULL)
+    {
+      for(x.first(); x.test(); x.next())
+	{
+	  (*sigma2_past)(x,0) = (*sigma2)(x,0);
+	  (*sigma2_past)(x,1) = (*sigma2)(x,1);
+	  (*sigma2_past)(x,2) = (*sigma2)(x,2);
+	}
+    }
+}
 
 #endif

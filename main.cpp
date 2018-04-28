@@ -111,11 +111,11 @@ int main(int argc, char **argv)
 	icsettings ic;
 	gadget2_header hdr;
 	Real T00hom;
-    Real sigma0;
-    Real tot_count;
-    Real a_past = 1.;
-    long Nempty;
-    int subvel_counter = 1;
+        Real sigma0;
+        Real tot_count;
+        Real a_past = 1.;
+        long Nempty;
+        int subvel_counter = 1;
 
 #ifndef H5_DEBUG
 	H5Eset_auto2 (H5E_DEFAULT, NULL, NULL);
@@ -228,10 +228,10 @@ int main(int argc, char **argv)
         Field<Real> norm_vR2;
 	Field<Real> norm_w;
         Field<Real> sigma2;
-	Field<Real> weight;
+        Field<Real> sigma2_past;
 	Field<Cplx> scalarFT;
 	Field<Cplx> sigma2FT;
-        Field<Cplx> weightFT;
+	Field<Cplx> sigma2_pastFT;
 	Field<Cplx> T00FT;
 	Field<Cplx> count_partFT;
 	Field<Cplx> SijFT;
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
         T00.initialize(lat,1);
         count_part.initialize(lat,1);
         sigma2.initialize(lat, 1);
-	weight.initialize(lat, 1);
+	sigma2_past.initialize(lat, 1);
 	scalarFT.initialize(latFT,1);
         count_partFT.initialize(latFT,1);
         thFT.initialize(latFT,1);
@@ -261,8 +261,7 @@ int main(int argc, char **argv)
         norm_vR2FT.initialize(latFT,1);
         T00FT.initialize(latFT,1);
         sigma2FT.initialize(latFT,1);
-	weightFT.initialize(latFT,1);
-
+	sigma2_pastFT.initialize(latFT,1);
 	PlanFFT<Cplx> plan_source(&source, &scalarFT);
 	PlanFFT<Cplx> plan_phi(&phi, &scalarFT);
 	PlanFFT<Cplx> plan_chi(&chi, &scalarFT);
@@ -272,7 +271,7 @@ int main(int argc, char **argv)
 	PlanFFT<Cplx> plan_T00(&T00, &T00FT);
         PlanFFT<Cplx> plan_count(&count_part, &count_partFT);
         PlanFFT<Cplx> plan_sigma2(&sigma2, &sigma2FT);
-	PlanFFT<Cplx> plan_weight(&weight, &weightFT);
+	PlanFFT<Cplx> plan_sigma2_past(&sigma2_past, &sigma2_pastFT);
 
 	Sij.initialize(lat,3,3,symmetric);
 	SijFT.initialize(latFT,3,3,symmetric);
@@ -512,7 +511,6 @@ int main(int argc, char **argv)
                   {
 		    compute_vi_past_rescaled(cosmo, &vi, &source, a, a_past, &Ti0, &vi_past);
                     store_vi(&vi_past, &vi);
-                    a_past = a;
                   }
 
 		if (sim.vector_flag == VECTOR_ELLIPTIC && sim.velocity_flag == VEL_SMOOTH && 1. / a < sim.z_pk[pkcount] + 1.)
@@ -532,14 +530,6 @@ int main(int argc, char **argv)
                     compute_vi_zero(&vi, &source, &Ti0);
                   }
 
-                //// Compute the velocity field squared
-                vi.updateHalo();  
-                projection_init(&sigma2);
-		projection_sigma2_project(&pcls_cdm, &sigma2, &weight, a, &vi, &phi, 1.0);
-                projection_sigma2_comm(&sigma2);
-                sigma2.updateHalo();
-                weight.updateHalo();
-
 
 		projection_init(&Sij);
 		projection_Tij_project(&pcls_cdm, &Sij, a, &phi);
@@ -551,6 +541,15 @@ int main(int argc, char **argv)
 				projection_Tij_project(pcls_ncdm+i, &Sij, a, &phi);
 		}
 		projection_Tij_comm(&Sij);
+
+                if (sim.vector_flag == VECTOR_ELLIPTIC)
+                  {
+                    compute_sigma2_rescaled(cosmo, &sigma2, &source, &Sij, &vi, &sigma2_past, a, a_past);
+                    store_sigma2(&sigma2_past, &sigma2);
+                    a_past = a;
+                  }
+
+
 		
 #ifdef BENCHMARK 
 		projection_time += MPI_Wtime() - cycle_start_time;
@@ -566,14 +565,13 @@ int main(int argc, char **argv)
                         sigma0 = 0.;
 			for (x.first(); x.test(); x.next())
 			  {T00hom += source(x);
-			   sigma0 += (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.;
-                           //sigmaV(x) = (Sij(x, 0, 0) + Sij(x, 1, 1) + Sij(x, 2, 2) )/3.; 
-                           }
+			    sigma0 += sigma2(x);
+                          }
 			parallel.sum<Real>(T00hom);
                         parallel.sum<Real>(sigma0);
 			T00hom /= (Real) numpts3d;
                         sigma0 /= (Real) numpts3d;
- 		       
+			   		       
 			if (cycle % CYCLE_INFO_INTERVAL == 0)
 			{
 			  COUT << " cycle " << cycle << ", background information: z = " << (1./a) - 1. << ", average T00 = " << T00hom 

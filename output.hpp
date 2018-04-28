@@ -792,6 +792,33 @@ void writeSpectra(metadata & sim, cosmology & cosmo, const double fourpiG, const
                     sprintf(filename, "%s%s%03d_sigma2.dat", sim.output_path, sim.basename_pk, pkcount);
                     writePowerSpectrum(kbin, power, kscatter, pscatter, occupation, sim.numbins, sim.boxsize,\
                     (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI, filename, "power spectrum of sigma2", a);
+		    extractCrossSpectrum(*sigma2FT, *thFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, true, KTYPE_LINEAR);
+		    sprintf(filename, "%s%s%03d_sigma2theta_de.dat", sim.output_path, sim.basename_pk, pkcount);
+		    writePowerSpectrum(
+				       kbin, power, kscatter, pscatter, occupation,
+				       sim.numbins, sim.boxsize,
+				       sim.boxsize * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI,
+				       filename, "cross spectrum of sigma2-theta", a
+				       );
+		    extractCrossSpectrum(*vRFT, *BiFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, true, KTYPE_LINEAR);
+		    sprintf(filename, "%s%s%03d_vRBi_de.dat", sim.output_path, sim.basename_pk, pkcount);
+		    writePowerSpectrum(
+				       kbin, power, kscatter, pscatter, occupation,
+				       sim.numbins, sim.boxsize,
+				       a * a *(Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI,
+				       filename, "cross spectrum of vR-Bi", a
+				       );
+
+		    extractCrossSpectrum(*scalarFT, *thFT, kbin, power, kscatter, pscatter, occupation, sim.numbins, true, KTYPE_LINEAR);
+		    sprintf(filename, "%s%s%03d_deltatheta_de.dat", sim.output_path, sim.basename_pk, pkcount);
+		    writePowerSpectrum(
+				       kbin, power, kscatter, pscatter, occupation,
+				       sim.numbins, sim.boxsize,
+				       (cosmo.Omega_cdm + cosmo.Omega_b + bg_ncdm(a, cosmo))*
+                                       sim.boxsize * (Real) numpts3d * (Real) numpts3d * 2. * M_PI * M_PI,
+				       filename, "cross spectrum of delta-theta", a
+				       );
+
 
 
 		  }
