@@ -1,12 +1,12 @@
-HDF5INCL= -I/home/leporif7/Nbody/Lib/hdf5-1.10.1_lib/include
-HDF5LIBS= -L/home/leporif7/Nbody/Lib/hdf5-1.10.1_lib/lib
-FFTWINCL= -I/home/leporif7/Nbody/Lib/fftw-3.3.6-pl2_lib/include
-FFTWLIBS= -L/home/leporif7/Nbody/Lib/fftw-3.3.6-pl2_lib/lib
-GSLINCL= -I/home/leporif7/Nbody/Lib/gsl-1.16_lib/include
-GSLLIBS= -L/home/leporif7/Nbody/Lib/gsl-1.16_lib/lib
+HDF5INCL= -I/home/leporif/Nbody/Lib/hdf5-1.10.1_lib/include
+HDF5LIBS= -L/home/leporif/Nbody/Lib/hdf5-1.10.1_lib/lib
+FFTWINCL= -I/home/leporif/Nbody/Lib/fftw-3.3.4_lib/include
+FFTWLIBS= -L/home/leporif/Nbody/Lib/fftw-3.3.4_lib/lib
+GSLINCL= -I/home/leporif/Nbody/Lib/gsl-1.16_lib/include
+GSLLIBS= -L/home/leporif/Nbody/Lib/gsl-1.16_lib/lib
 # programming environment
 COMPILER     := mpic++
-INCLUDE      := -I/home/leporif7/Nbody/Lib/LATfield2 $(HDF5INCL) $(FFTWINCL) $(GSLINCL)
+INCLUDE      := -I/home/leporif/Nbody/Lib/LATfield2 $(HDF5INCL) $(FFTWINCL) $(GSLINCL)
 LIB          := $(HDF5LIBS) $(FFTWLIBS) $(GSLLIBS) -lfftw3 -lm -lhdf5 -lgsl -lgslcblas 
 #-lfftw3 -lm -lhdf5 -lgsl -lgslcblas
 
@@ -29,7 +29,7 @@ DGEVOLUTION  += -DBENCHMARK
 #DGEVOLUTION  += -DHAVE_CLASS # requires OPT -fopenmp and LIB -lclass
 
 # further compiler options
-OPT          := -O3 -std=c++11
+OPT          := -O3 -std=c++11 
 
 $(EXEC): $(SOURCE) $(HEADERS) makefile
 	$(COMPILER) $< -o $@ $(OPT) $(DLATFIELD2) $(DGEVOLUTION) $(INCLUDE) $(LIB)

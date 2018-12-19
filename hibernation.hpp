@@ -342,7 +342,14 @@ void writeRestartSettings(metadata & sim, icsettings & ic, cosmology & cosmo, co
 			{
 				fprintf(outfile, "deltaN");
 			}
-			fprintf(outfile, "\n");
+			/*                        if(sim.out_pk & MASK_VORT)
+			  {
+			    fprintf(outfile, "wi");
+			    if (sim.out_pk > MASK_T00)
+			      fprintf(outfile, ", ");
+			  }
+			  fprintf(outfile, "\n");*/
+                        
 		}
 		fprintf(outfile, "Pk bins            = %d\n", sim.numbins);
 		fprintf(outfile, "\n\n# hibernations\n\n");

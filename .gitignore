@@ -7,3 +7,14 @@ output/
 submission_script
 submission_script~
 test.out
+random_script.sh 
+several_jobs.py 
+main_script_riki.py 
+mass_res.py 
+run_sims.py
+test_convolve/
+test_method/
+test_sigma/
+test_smooth.out
+test_subvel/
+test_vR/
