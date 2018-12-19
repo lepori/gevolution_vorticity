@@ -658,6 +658,17 @@ int main(int argc, char **argv)
 		    vi.updateHalo();
                     sigma2.updateHalo();
  		  }
+                // snapshot output                                                                                                         
+                if (snapcount < sim.num_snapshot && 1. / a < sim.z_snapshot[snapcount] + 1.)
+		  {
+
+		    if (sim.out_snapshot & MASK_VORT){
+		      
+		      compute_norm2_vR(&vR, &norm_vR2);
+		      norm_vR2.updateHalo();
+		      compute_norm_w(&norm_vR2, &norm_w);
+                      norm_w.updateHalo();
+		    }
 
 		// record some background data
 		if (kFT.setCoord(0, 0, 0))
@@ -762,21 +773,6 @@ int main(int argc, char **argv)
 		gravity_solver_time += MPI_Wtime() - ref_time;
 		ref_time = MPI_Wtime();
 #endif
-
-		// snapshot output
-		if (snapcount < sim.num_snapshot && 1. / a < sim.z_snapshot[snapcount] + 1.)
-		{
-
-		  if (sim.out_snapshot & MASK_VORT){
-                    
-		    compute_norm2_vR(&vR, &norm_vR2);
-                    norm_vR2.updateHalo();
-                    
-		    //plan_norm_w.execute(FFT_FORWARD);
-		    //compute_laplacianFT(norm_wFT, norm_wFT);
-		    //plan_norm_w.execute(FFT_BACKWARD);
-		    compute_norm_w(&norm_vR2, &norm_w);
-		  }
 
 
 			COUT << COLORTEXT_CYAN << " writing snapshot" << COLORTEXT_RESET << " at z = " << ((1./a) - 1.) <<  " (cycle " << cycle << "), tau/boxsize = " << tau << endl;
